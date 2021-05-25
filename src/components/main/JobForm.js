@@ -351,6 +351,7 @@ function SettingsForm({currentStateManage}) {
             if (!params) {
                 continue;
             }
+            const allParams = [];
             for (let i = 0; i < jobSettings["genFile_" + genKey]; i++) {
                 const paramSet = {
                     id: jobID + "_" + startingGenID,
@@ -369,15 +370,40 @@ function SettingsForm({currentStateManage}) {
                 };
                 startingGenID++;
                 const itemParams = {};
-                // generate the parameters used for that Gen File
-                for (const param of params) {
-                    if (param.hasOwnProperty("step")) {
-                        let steps = (param.max - param.min) / param.step;
-                        let randomStep = Math.floor(Math.random() * steps);
-                        itemParams[param.name] = param.min + param.step * randomStep;
-                    } else {
-                        itemParams[param.name] = param.value;
+                let duplicateCount = 0;
+                while (true){
+                    // generate the parameters used for that Gen File
+                    for (const param of params) {
+                        if (param.hasOwnProperty("step")) {
+                            let steps = (param.max - param.min) / param.step;
+                            let randomStep = Math.floor(Math.random() * steps);
+                            itemParams[param.name] = param.min + param.step * randomStep;
+                        } else {
+                            itemParams[param.name] = param.value;
+                        }
                     }
+                    let existCheck = false;
+                    for (const existingParam of allParams) {
+                        let isDuplicate = true;
+                        for (const param of params) {
+                            if (!param.hasOwnProperty("step")) {
+                                continue;
+                            }
+                            if (itemParams[param.name] !== existingParam[param.name]) {
+                                isDuplicate = false;
+                                break;
+                            }
+                        }
+                        if (isDuplicate) {
+                            existCheck = true;
+                            break;
+                        }
+                    }
+                    if (!existCheck || duplicateCount >= 20) {
+                        allParams.push(itemParams);
+                        break;
+                    }
+                    duplicateCount += 1;
                 }
                 paramSet.params = JSON.stringify(itemParams);
                 allPromises.push(
@@ -422,7 +448,6 @@ function SettingsForm({currentStateManage}) {
             survival_size: jobSettings.survival_size,
             errorMessage: null,
         };
-        console.log(jobParam)
         API.graphql(
             graphqlOperation(createJob, {
                 input: jobParam,
