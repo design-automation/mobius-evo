@@ -7,7 +7,6 @@ import { AmplifyAuthenticator, AmplifySignIn } from "@aws-amplify/ui-react";
 import { Space, Collapse, Row, Col, Typography, Button, Descriptions, Checkbox } from "antd";
 import { Link } from 'react-router-dom';
 import { UploadOutlined } from "@ant-design/icons";
-import helpJSON from "../../assets/help/help_text_json";
 
 function NotAuthenticated() {
     const setCognitoPayload = useContext(AuthContext).setCognitoPayload;
@@ -66,8 +65,8 @@ function NotAuthenticated() {
 function LandingArticle() {
     return (
         <article id="landing-article">
-            <h1>{helpJSON.front_page.title}</h1>
-            <p>{helpJSON.front_page.description}</p>
+            <h1>Evolutionary Analysis of Mobius Parametric Models</h1>
+            <p></p>
             <Space size="middle">
                 <a href="https://mobius.design-automation.net/gallery">Mobius Modeller</a>
                 <a type="link" href="http://design-automation.net">
@@ -185,12 +184,18 @@ function GettingStarted() {
 function Landing() {
     return (
         <div id="landing-container">
-            <section>
-                <LandingArticle/>
-                <hr/>
-                <GettingStarted />
-            </section>
-            {!useContext(AuthContext).cognitoPayload ? <NotAuthenticated /> : null}
+            <Row style={{width:"100%"}}>
+                <Col md={12}>
+                    <section>
+                        <LandingArticle/>
+                        <hr/>
+                        <GettingStarted />
+                    </section>
+                </Col>
+                <Col md={12}>
+                    {!useContext(AuthContext).cognitoPayload ? <NotAuthenticated /> : null}
+                </Col>
+            </Row>
         </div>
     );
 }
