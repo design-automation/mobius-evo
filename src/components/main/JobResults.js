@@ -789,7 +789,7 @@ function JobResults() {
             return genTableEntry;
         });
     }
-    const expandedSettings = ["max_designs", "population_size", "survival_size", "tournament_size"];
+    const expandedSettings = ["Max_Designs", "Population_Size", "Tournament_Size", "Survival_Size"];
     return (
         <Space direction="vertical" size="large" style={{ width: "inherit" }}>
             <br></br>
