@@ -910,7 +910,7 @@ function JobResults() {
                                             </Descriptions.Item>
                                             {expandedSettings.map((dataKey) => (
                                                 <Descriptions.Item label={dataKey} key={dataKey}>
-                                                    {jobSettings[dataKey]}
+                                                    {jobSettings[dataKey.toLowerCase()]}
                                                 </Descriptions.Item>
                                             ))}
                                             {/* <Descriptions.Item label="expiration" key="expiration">
