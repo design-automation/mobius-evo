@@ -297,9 +297,9 @@ function FileSelectionModal({ isModalVisibleState, jobSettingsState, jobResultsS
         return () => (isSubscribed = false);
     };
     useEffect(listS3files, [uploadedFiles, isModalVisible]); // Updates when new files are uploaded
-    function FileUpload() {
+    function FileUpload({ uploadType }) {
         function handleUpload({ file, onSuccess, onError, onProgress }) {
-            uploadS3(`files/${file.name}`, file, onSuccess, onError, onProgress);
+            uploadS3(`files/${uploadType.toLowerCase()}/${file.name}`, file, onSuccess, onError, onProgress);
         }
         function handleChange(event) {
             if (event.file.status === "done") {
@@ -313,10 +313,9 @@ function FileSelectionModal({ isModalVisibleState, jobSettingsState, jobResultsS
             <div className="upload-topbar">
                 <Upload accept=".js" multiple={true} customRequest={handleUpload} onChange={handleChange} showUploadList={false}>
                     <Button>
-                        <UploadOutlined /> Upload
+                        <UploadOutlined /> Upload {uploadType} File
                     </Button>
                 </Upload>
-                {/* <span>{uploadedFiles.length>0 ? `Uploaded: ${uploadedFiles.join(", ")}` : null}</span> */}
             </div>
         );
     }
@@ -352,7 +351,7 @@ function FileSelectionModal({ isModalVisibleState, jobSettingsState, jobResultsS
         <>
             <Modal title="Select File" visible={isModalVisible} onOk={handleOk} onCancel={handleCancel}>
                 <Space direction="vertical" size="middle" style={{ width: "100%" }}>
-                    <FileUpload />
+                    <FileUpload uploadType={replaceEvalCheck?"eval":"gen"} />
                     <Table
                         dataSource={s3Files}
                         columns={columns}
