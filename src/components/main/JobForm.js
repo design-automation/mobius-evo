@@ -81,8 +81,8 @@ function FileSelectionModal({ isModalVisibleState, genFilesState, setEvalFile, r
             );
             if (!replacedUrl) {
                 if (genFiles.indexOf(newUrl) !== -1) {
-                    notify('Unable to add gen file!', 'Job already contains Gen file to be added.')
-                    return;
+                    notify('Unable to add gen file!', 'Search already contains Gen file to be added.')
+                    continue;
                 }
                 genFiles.push(newUrl);
                 okCheck = true;
@@ -127,7 +127,6 @@ function FileSelectionModal({ isModalVisibleState, genFilesState, setEvalFile, r
         setIsModalVisible(false);
     };
 
-    const onRadioCell = () => ({ style: { textAlign: "center" } });
     const columns = [
         {
             title: "File",

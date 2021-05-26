@@ -29,7 +29,8 @@ function FileSelectionModal({ isModalVisibleState, jobSettingsState, jobResultsS
     const { isModalVisible, setIsModalVisible } = isModalVisibleState;
     const { jobSettings, setJobSettings } = jobSettingsState;
     const { jobResults, setJobResults } = jobResultsState;
-    const [newFile, setnewFile] = useState(null);
+    const [selectedRows, setSelectedRows] = useState([]);
+    const [selectedRowKeys, setSelectedRowKeys] = useState([]);
 
 
     const handleOk = async () => {
@@ -40,107 +41,114 @@ function FileSelectionModal({ isModalVisibleState, jobSettingsState, jobResultsS
         }
     };
     const handleGenOk = async () => {
-        if (!newFile) {
-            setIsModalVisible(false);
-            return;
-        }
-        let newUrl = "";
-        await getS3Url(
-            `files/gen/${newFile}`,
-            (s3Url) => (newUrl = s3Url),
-            () => {}
-        );
-        let okCheck = false;
-        if (!replacedUrl) {
-            if (jobSettings.genUrl.indexOf(newUrl) !== -1) {
-                notify('Unable to add gen file!', 'Job already contains Gen file to be added.')
-                return;
-            }
-            jobSettings.genUrl.push(newUrl);
-            okCheck = true;
-        } else {
-            const genIndex = jobSettings.genUrl.indexOf(replacedUrl);
-            if (genIndex !== -1) {
-                jobSettings.genUrl.splice(genIndex, 1, newUrl);
-                okCheck = true;
-            }
-        }
-        // let expiration = 86400;
-        // if (jobSettings.expiration) {
-        //     expiration = jobSettings.expiration;
-        // }
-        // const expiration_time = Math.round(Date.now() / 1000) + expiration;
-
         const allPromises = [];
-        if (okCheck) {
-            setJobSettings(jobSettings);
-            let newID = jobResults.length;
-            const newJobs = [];
-            jobResults
-                .filter((result) => result.genUrl === replacedUrl && result.live === true)
-                .forEach((result) => {
-                    allPromises.push(
-                        API.graphql(
-                            graphqlOperation(updateGenEvalParam, {
-                                input: {
-                                    id: result.id,
-                                    JobID: result.JobID,
-                                    GenID: result.GenID,
-                                    live: false,
-                                    expirationTime: null,
-                                },
-                            })
-                        )
-                            .then()
-                            .catch((err) => console.log(err))
-                    );
-                    const newParam = {
-                        id: result.JobID + "_" + newID,
-                        JobID: result.JobID,
-                        GenID: newID,
-                        generation: result.generation,
-                        genUrl: newUrl,
-                        evalUrl: result.evalUrl,
-                        evalResult: null,
-                        live: true,
-                        params: result.params,
-                        score: null,
-                        owner: result.owner,
-                        expirationTime: null,
-                        errorMessage: null,
-                    };
-                    allPromises.push(
-                        API.graphql(
-                            graphqlOperation(createGenEvalParam, {
-                                input: newParam,
-                            })
-                        )
-                            .then()
-                            .catch((err) => console.log(err))
-                    );
-                    result.live = false;
-                    newJobs.push(newParam);
-                    newID += 1;
-                });
-            allPromises.push(
-                API.graphql(
-                    graphqlOperation(updateJob, {
-                        input: jobSettings,
-                    })
-                )
-                    .then()
-                    .catch((err) => console.log(err))
+        for (const selectedRow of selectedRows) {
+            const newFile = selectedRow.filename;
+            if (!newFile) {
+                continue;
+            }
+            let newUrl = "";
+            await getS3Url(
+                `files/gen/${newFile}`,
+                (s3Url) => (newUrl = s3Url),
+                () => {}
             );
-            setJobResults(jobResults.concat(newJobs));
+            let okCheck = false;
+            if (!replacedUrl) {
+                if (jobSettings.genUrl.indexOf(newUrl) !== -1) {
+                    notify('Unable to add gen file!', 'Search already contains Gen file to be added.')
+                    continue;
+                }
+                jobSettings.genUrl.push(newUrl);
+                okCheck = true;
+            } else {
+                const genIndex = jobSettings.genUrl.indexOf(replacedUrl);
+                if (genIndex !== -1) {
+                    jobSettings.genUrl.splice(genIndex, 1, newUrl);
+                    okCheck = true;
+                }
+            }
+            // let expiration = 86400;
+            // if (jobSettings.expiration) {
+            //     expiration = jobSettings.expiration;
+            // }
+            // const expiration_time = Math.round(Date.now() / 1000) + expiration;
+
+            if (okCheck) {
+                setJobSettings(jobSettings);
+                let newID = jobResults.length;
+                const newJobs = [];
+                jobResults
+                    .filter((result) => result.genUrl === replacedUrl && result.live === true)
+                    .forEach((result) => {
+                        allPromises.push(
+                            API.graphql(
+                                graphqlOperation(updateGenEvalParam, {
+                                    input: {
+                                        id: result.id,
+                                        JobID: result.JobID,
+                                        GenID: result.GenID,
+                                        live: false,
+                                        expirationTime: null,
+                                    },
+                                })
+                            )
+                                .then()
+                                .catch((err) => console.log(err))
+                        );
+                        const newParam = {
+                            id: result.JobID + "_" + newID,
+                            JobID: result.JobID,
+                            GenID: newID,
+                            generation: result.generation,
+                            genUrl: newUrl,
+                            evalUrl: result.evalUrl,
+                            evalResult: null,
+                            live: true,
+                            params: result.params,
+                            score: null,
+                            owner: result.owner,
+                            expirationTime: null,
+                            errorMessage: null,
+                        };
+                        allPromises.push(
+                            API.graphql(
+                                graphqlOperation(createGenEvalParam, {
+                                    input: newParam,
+                                })
+                            )
+                                .then()
+                                .catch((err) => console.log(err))
+                        );
+                        result.live = false;
+                        newJobs.push(newParam);
+                        newID += 1;
+                    });
+                allPromises.push(
+                    API.graphql(
+                        graphqlOperation(updateJob, {
+                            input: jobSettings,
+                        })
+                    )
+                        .then()
+                        .catch((err) => console.log(err))
+                );
+                setJobResults(jobResults.concat(newJobs));
+            }
         }
         await Promise.all(allPromises);
+        setSelectedRows([])
+        setSelectedRowKeys([])
         setIsModalVisible(false);
     };
     const handleEvalOk = async () => {
-        if (!newFile) {
+        if (selectedRows.length === 0 || !selectedRows[0].filename) {
+            setSelectedRows([])
+            setSelectedRowKeys([])
             setIsModalVisible(false);
             return;
         }
+        const newFile = selectedRows[0].filename;
         let newUrl = "";
         await getS3Url(
             `files/eval/${newFile}`,
@@ -216,6 +224,8 @@ function FileSelectionModal({ isModalVisibleState, jobSettingsState, jobResultsS
         setJobResults(jobResults.concat(newJobs));
 
         await Promise.all(allPromises);
+        setSelectedRows([])
+        setSelectedRowKeys([])
         setIsModalVisible(false);
     };
 
@@ -223,7 +233,6 @@ function FileSelectionModal({ isModalVisibleState, jobSettingsState, jobResultsS
         setIsModalVisible(false);
     };
 
-    const onRadioCell = () => ({ style: { textAlign: "center" } });
     const columns = [
         {
             title: "File",
@@ -249,23 +258,22 @@ function FileSelectionModal({ isModalVisibleState, jobSettingsState, jobResultsS
                     ) : null}
                 </Space>
             ),
-        },
-        {
-            title: "Select File",
-            key: "evalfile",
-            onCell: onRadioCell,
-            width: "8em",
-            render: (text, record, index) => (
-                <Radio
-                    value={record.filename}
-                    checked={record.filename === newFile}
-                    onChange={(event) => {
-                        setnewFile(event.target.value);
-                    }}
-                ></Radio>
-            ),
-        },
+        }
     ];
+
+    const rowSelection = {
+        selectedRowKeys,
+        columnTitle: 'Select File',
+        onChange: (selectedRowKeys, selectedRows) => {
+            setSelectedRowKeys(selectedRowKeys)
+            setSelectedRows(selectedRows)
+        }
+    };
+    if (replaceEvalCheck || replacedUrl) {
+        rowSelection.type = 'radio';
+    } else {
+        rowSelection.type = 'checkbox';
+    }
 
     const listS3files = () => {
         setIsTableLoading(true);
@@ -364,6 +372,7 @@ function FileSelectionModal({ isModalVisibleState, jobSettingsState, jobResultsS
                             showQuickJumper: true,
                             showTotal: (total) => `${total} files`,
                         }}
+                        rowSelection={rowSelection}
                     ></Table>
                 </Space>
             </Modal>
