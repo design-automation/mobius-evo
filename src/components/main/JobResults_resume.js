@@ -297,9 +297,9 @@ function FileSelectionModal({ isModalVisibleState, jobSettingsState, jobResultsS
         return () => (isSubscribed = false);
     };
     useEffect(listS3files, [uploadedFiles, isModalVisible]); // Updates when new files are uploaded
-    function FileUpload() {
+    function FileUpload({ uploadType }) {
         function handleUpload({ file, onSuccess, onError, onProgress }) {
-            uploadS3(`files/${file.name}`, file, onSuccess, onError, onProgress);
+            uploadS3(`files/${uploadType.toLowerCase()}/${file.name}`, file, onSuccess, onError, onProgress);
         }
         function handleChange(event) {
             if (event.file.status === "done") {
@@ -313,10 +313,9 @@ function FileSelectionModal({ isModalVisibleState, jobSettingsState, jobResultsS
             <div className="upload-topbar">
                 <Upload accept=".js" multiple={true} customRequest={handleUpload} onChange={handleChange} showUploadList={false}>
                     <Button>
-                        <UploadOutlined /> Upload
+                        <UploadOutlined /> Upload {uploadType} File
                     </Button>
                 </Upload>
-                {/* <span>{uploadedFiles.length>0 ? `Uploaded: ${uploadedFiles.join(", ")}` : null}</span> */}
             </div>
         );
     }
@@ -352,7 +351,7 @@ function FileSelectionModal({ isModalVisibleState, jobSettingsState, jobResultsS
         <>
             <Modal title="Select File" visible={isModalVisible} onOk={handleOk} onCancel={handleCancel}>
                 <Space direction="vertical" size="middle" style={{ width: "100%" }}>
-                    <FileUpload />
+                    <FileUpload uploadType={replaceEvalCheck?"eval":"gen"} />
                     <Table
                         dataSource={s3Files}
                         columns={columns}
@@ -424,7 +423,13 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
                 continue;
             }
             let maxGen = 1;
-            jobResults.forEach((result) => (maxGen = Math.max(maxGen, result.generation)));
+            const allParams = [];
+            jobResults.forEach((result) => {
+                maxGen = Math.max(maxGen, result.generation)
+                if (result.genUrl === newJobSettings.genUrl[genKey]) {
+                    allParams.push(result.params)
+                }
+            });
             for (let i = 0; i < newJobSettings["genFile_" + genKey]; i++) {
                 const paramSet = {
                     id: jobID + "_" + startingGenID,
@@ -443,15 +448,41 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
                 };
                 startingGenID++;
                 const itemParams = {};
-                // generate the parameters used for that Gen File
-                for (const param of params) {
-                    if (param.hasOwnProperty("step")) {
-                        let steps = (param.max - param.min) / param.step;
-                        let randomStep = Math.floor(Math.random() * steps);
-                        itemParams[param.name] = param.min + param.step * randomStep;
-                    } else {
-                        itemParams[param.name] = param.value;
+
+                let duplicateCount = 0;
+                while (true){
+                    // generate the parameters used for that Gen File
+                    for (const param of params) {
+                        if (param.hasOwnProperty("step")) {
+                            let steps = (param.max - param.min) / param.step;
+                            let randomStep = Math.floor(Math.random() * steps);
+                            itemParams[param.name] = param.min + param.step * randomStep;
+                        } else {
+                            itemParams[param.name] = param.value;
+                        }
                     }
+                    let existCheck = false;
+                    for (const existingParam of allParams) {
+                        let isDuplicate = true;
+                        for (const param of params) {
+                            if (!param.hasOwnProperty("step")) {
+                                continue;
+                            }
+                            if (itemParams[param.name] !== existingParam[param.name]) {
+                                isDuplicate = false;
+                                break;
+                            }
+                        }
+                        if (isDuplicate) {
+                            existCheck = true;
+                            break;
+                        }
+                    }
+                    if (!existCheck || duplicateCount >= 20) {
+                        allParams.push(itemParams);
+                        break;
+                    }
+                    duplicateCount += 1;
                 }
                 paramSet.params = JSON.stringify(itemParams);
                 allPromises.push(

@@ -59,7 +59,8 @@ function FileSelectionModal({ isModalVisibleState, genFilesState, setEvalFile, r
     const [isTableLoading, setIsTableLoading] = useState(true);
     const { genFiles, setGenFiles } = genFilesState;
     const { isModalVisible, setIsModalVisible } = isModalVisibleState;
-    const [newFile, setnewFile] = useState(null);
+    const [selectedRows, setSelectedRows] = useState([]);
+    const [selectedRowKeys, setSelectedRowKeys] = useState([]);
 
     const handleOk = async () => {
         if (!replaceEvalCheck) {
@@ -69,52 +70,60 @@ function FileSelectionModal({ isModalVisibleState, genFilesState, setEvalFile, r
         }
     };
     const handleGenOk = async () => {
-        if (!newFile) {
-            setIsModalVisible(false);
-            return;
-        }
-        let newUrl = "";
-        await getS3Url(
-            `files/gen/${newFile}`,
-            (s3Url) => (newUrl = s3Url),
-            () => {}
-        );
         let okCheck = false;
-        if (!replacedUrl) {
-            if (genFiles.indexOf(newUrl) !== -1) {
-                notify('Unable to add gen file!', 'Job already contains Gen file to be added.')
-                return;
-            }
-            genFiles.push(newUrl);
-            okCheck = true;
-        } else {
-            const genIndex = genFiles.indexOf(replacedUrl);
-            if (genIndex !== -1) {
-                genFiles.splice(genIndex, 1, newUrl);
+        for (const selectedRow of selectedRows) {
+            const newFile = selectedRow.filename;
+            let newUrl = "";
+            await getS3Url(
+                `files/gen/${newFile}`,
+                (s3Url) => (newUrl = s3Url),
+                () => {}
+            );
+            if (!replacedUrl) {
+                if (genFiles.indexOf(newUrl) !== -1) {
+                    notify('Unable to add gen file!', 'Job already contains Gen file to be added.')
+                    return;
+                }
+                genFiles.push(newUrl);
                 okCheck = true;
+            } else {
+                const genIndex = genFiles.indexOf(replacedUrl);
+                if (genIndex !== -1) {
+                    genFiles.splice(genIndex, 1, newUrl);
+                    okCheck = true;
+                }
             }
         }
         if (okCheck) {
             setGenFiles(genFiles);
         }
+        setSelectedRows([])
+        setSelectedRowKeys([])
         setIsModalVisible(false);
     };
     const handleEvalOk = async () => {
-        if (!newFile) {
+        if (selectedRows.length === 0 || !selectedRows[0].filename) {
+            setSelectedRows([])
+            setSelectedRowKeys([])
             setIsModalVisible(false);
             return;
         }
+        const newFile = selectedRows[0].filename;
         let newUrl = "";
         await getS3Url(
             `files/eval/${newFile}`,
             (s3Url) => (newUrl = s3Url),
             () => {}
         );
+        setSelectedRows([])
+        setSelectedRowKeys([])
         setEvalFile(newUrl);
         setIsModalVisible(false);
     };
 
     const handleCancel = () => {
+        setSelectedRows([])
+        setSelectedRowKeys([])
         setIsModalVisible(false);
     };
 
@@ -144,23 +153,21 @@ function FileSelectionModal({ isModalVisibleState, genFilesState, setEvalFile, r
                     ) : null}
                 </Space>
             ),
-        },
-        {
-            title: "Select File",
-            key: "evalfile",
-            onCell: onRadioCell,
-            width: "8em",
-            render: (text, record, index) => (
-                <Radio
-                    value={record.filename}
-                    checked={record.filename === newFile}
-                    onChange={(event) => {
-                        setnewFile(event.target.value);
-                    }}
-                ></Radio>
-            ),
-        },
+        }
     ];
+    const rowSelection = {
+        selectedRowKeys,
+        columnTitle: 'Select File',
+        onChange: (selectedRowKeys, selectedRows) => {
+            setSelectedRowKeys(selectedRowKeys)
+            setSelectedRows(selectedRows)
+        }
+    };
+    if (replaceEvalCheck || replacedUrl) {
+        rowSelection.type = 'radio';
+    } else {
+        rowSelection.type = 'checkbox';
+    }
 
     const listS3files = () => {
         setIsTableLoading(true);
@@ -185,7 +192,6 @@ function FileSelectionModal({ isModalVisibleState, genFilesState, setEvalFile, r
                 });
                 fileList.sort((a, b) => b.lastModified - a.lastModified); // Default descending order
                 setS3Files([...fileList]);
-                setnewFile(null);
                 setIsTableLoading(false);
             }
         }; // changes state if still subscribed
@@ -193,9 +199,9 @@ function FileSelectionModal({ isModalVisibleState, genFilesState, setEvalFile, r
         return () => (isSubscribed = false);
     };
     useEffect(listS3files, [uploadedFiles, isModalVisible]); // Updates when new files are uploaded
-    function FileUpload() {
+    function FileUpload({ uploadType }) {
         function handleUpload({ file, onSuccess, onError, onProgress }) {
-            uploadS3(`files/${file.name}`, file, onSuccess, onError, onProgress);
+            uploadS3(`files/${uploadType.toLowerCase()}/${file.name}`, file, onSuccess, onError, onProgress);
         }
         function handleChange(event) {
             if (event.file.status === "done") {
@@ -209,10 +215,9 @@ function FileSelectionModal({ isModalVisibleState, genFilesState, setEvalFile, r
             <div className="upload-topbar">
                 <Upload accept=".js" multiple={true} customRequest={handleUpload} onChange={handleChange} showUploadList={false}>
                     <Button>
-                        <UploadOutlined /> Upload
+                        <UploadOutlined /> Upload {uploadType} File
                     </Button>
                 </Upload>
-                {/* <span>{uploadedFiles.length>0 ? `Uploaded: ${uploadedFiles.join(", ")}` : null}</span> */}
             </div>
         );
     }
@@ -248,7 +253,7 @@ function FileSelectionModal({ isModalVisibleState, genFilesState, setEvalFile, r
         <>
             <Modal title="Select File" visible={isModalVisible} onOk={handleOk} onCancel={handleCancel}>
                 <Space direction="vertical" size="middle" style={{ width: "100%" }}>
-                    <FileUpload />
+                    <FileUpload uploadType={replaceEvalCheck?"eval":"gen"} />
                     <Table
                         dataSource={s3Files}
                         columns={columns}
@@ -261,6 +266,7 @@ function FileSelectionModal({ isModalVisibleState, genFilesState, setEvalFile, r
                             showQuickJumper: true,
                             showTotal: (total) => `${total} files`,
                         }}
+                        rowSelection={rowSelection}
                     ></Table>
                 </Space>
             </Modal>
@@ -351,6 +357,7 @@ function SettingsForm({currentStateManage}) {
             if (!params) {
                 continue;
             }
+            const allParams = [];
             for (let i = 0; i < jobSettings["genFile_" + genKey]; i++) {
                 const paramSet = {
                     id: jobID + "_" + startingGenID,
@@ -369,15 +376,40 @@ function SettingsForm({currentStateManage}) {
                 };
                 startingGenID++;
                 const itemParams = {};
-                // generate the parameters used for that Gen File
-                for (const param of params) {
-                    if (param.hasOwnProperty("step")) {
-                        let steps = (param.max - param.min) / param.step;
-                        let randomStep = Math.floor(Math.random() * steps);
-                        itemParams[param.name] = param.min + param.step * randomStep;
-                    } else {
-                        itemParams[param.name] = param.value;
+                let duplicateCount = 0;
+                while (true){
+                    // generate the parameters used for that Gen File
+                    for (const param of params) {
+                        if (param.hasOwnProperty("step")) {
+                            let steps = (param.max - param.min) / param.step;
+                            let randomStep = Math.floor(Math.random() * steps);
+                            itemParams[param.name] = param.min + param.step * randomStep;
+                        } else {
+                            itemParams[param.name] = param.value;
+                        }
                     }
+                    let existCheck = false;
+                    for (const existingParam of allParams) {
+                        let isDuplicate = true;
+                        for (const param of params) {
+                            if (!param.hasOwnProperty("step")) {
+                                continue;
+                            }
+                            if (itemParams[param.name] !== existingParam[param.name]) {
+                                isDuplicate = false;
+                                break;
+                            }
+                        }
+                        if (isDuplicate) {
+                            existCheck = true;
+                            break;
+                        }
+                    }
+                    if (!existCheck || duplicateCount >= 20) {
+                        allParams.push(itemParams);
+                        break;
+                    }
+                    duplicateCount += 1;
                 }
                 paramSet.params = JSON.stringify(itemParams);
                 allPromises.push(
@@ -422,7 +454,6 @@ function SettingsForm({currentStateManage}) {
             survival_size: jobSettings.survival_size,
             errorMessage: null,
         };
-        console.log(jobParam)
         API.graphql(
             graphqlOperation(createJob, {
                 input: jobParam,

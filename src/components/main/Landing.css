@@ -1,36 +1,16 @@
 #landing-container {
-    width: 50%;
+    width:100%;
     box-sizing: border-box;
     display: flex;
     flex-flow: column wrap;
     padding-bottom: 5em;
 }
 
-#landing-article {
-    margin: 2em 0;
-    max-width: 320px;
-}
-
-#landing-article p {
-    text-align: justify;
-    text-justify: inter-word;
-}
-
-#landing-container .ant-collapse-header {
-    font-size: medium;
-}
-
-#landing-container .ant-collapse-content-box {
-    font-size: medium;
-}
-
 #landing-container .ant-descriptions-item-label {
-    font-size: medium;
     padding: 1em 2em;
 }
 
 #landing-container .ant-descriptions-item-content {
-    font-size: medium;
     padding: 1em 2em;
 }
 
@@ -41,20 +21,24 @@ amplify-authenticator {
     flex: 1;
 }
 
-@media only screen and (min-width: 600px) {
-    #landing-article {
-        max-width: 100%;
+@media only screen and (max-width: 768px) {
+    #landing-container .ant-row {
+        flex-direction: column-reverse;
+    }
+    .login-container {
+        position: relative;
+        width: 100%;
     }
 }
 
 @media only screen and (min-width: 768px) {
     #landing-container {
-        padding: 10em 10em 5em 10em;
+        padding: 2em;
         flex-flow: row wrap;
         justify-content: space-between;
-        width: 70%;
     }
-    #landing-article {
-        max-width: 460px;
+    .login-container {
+        position: fixed;
+        width: 50%;
     }
 }
