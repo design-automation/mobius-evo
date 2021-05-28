@@ -249,6 +249,7 @@ function Explorations() {
             .then((queriedResults) => {
                 const jobList = queriedResults.data.listJobs.items;
                 const jobData = jobList.map((data, index) => {
+                    if (!data.mutation_sd) { data.mutation_sd = 0.05; }
                     return {
                         key: index + 1,
                         title: data.description,

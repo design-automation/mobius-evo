@@ -123,8 +123,12 @@ async function getData(jobID, userID, setJobSettings, setJobResults, setIsLoadin
         })
     )
         .then((queryResult) => {
-            setJobSettings(queryResult.data.getJob);
-            if (!queryResult.data.getJob || queryResult.data.getJob.jobStatus === "inprogress") {
+            const jobData = queryResult.data.getJob;
+            if (jobData && !jobData.mutation_sd) {
+                jobData.mutation_sd = 0.05
+            }
+            setJobSettings(jobData);
+            if (!jobData || jobData.jobStatus === "inprogress") {
                 setTimeout(() => {
                     // setIsLoading(true);
                     setJobResults([]);

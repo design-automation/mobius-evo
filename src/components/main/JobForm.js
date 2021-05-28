@@ -24,7 +24,8 @@ import {
     Row,
     Collapse,
     notification,
-    Modal
+    Modal,
+    Slider
 } from "antd";
 import Help from "./utils/Help";
 import helpJSON from "../../assets/help/help_text_json";
@@ -621,19 +622,10 @@ function SettingsForm({currentStateManage}) {
 
                         <Tooltip placement="topLeft" title={helpText.mutation_sd}>
                             <Form.Item label="Mutation Standard Deviation" name="mutation_sd" >
-                                <InputNumber min={0.01} max={1}/>
+                                <Slider min={0.01} max={1} step={0.01} width="50%"/>
                             </Form.Item>
                         </Tooltip>
 
-                        {/* <Tooltip placement="topLeft" title={helpText.expiration}>
-                            <Form.Item label="Expiration" name="expiration_days" rules={rules}>
-                                <InputNumber 
-                                    formatter={value =>(value === '1')?`1 day`:`${value} days`}
-                                    parser={value => value.replace(/[^0-9.]/g, '')}
-                                    min={1}
-                                />
-                            </Form.Item>
-                        </Tooltip> */}
                     </Collapse.Panel>
                     <Collapse.Panel header="Generative Settings" key="2" extra={genExtra("gen_file")}>
                         <Button htmlType="button" onClick={() => showModalGen(null)}>Add Gen File</Button>
