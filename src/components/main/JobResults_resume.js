@@ -810,7 +810,7 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
 
                         <Tooltip placement="topLeft" title={helpText.mutation_sd}>
                             <Form.Item label="Mutation Standard Deviation" name="mutation_sd">
-                                <InputNumber min={0.01} max={1} />
+                                <InputNumber min={0.001} max={1} step={0.001}/>
                             </Form.Item>
                         </Tooltip>
                     </Collapse.Panel>

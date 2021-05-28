@@ -34,7 +34,7 @@ const testDefault = {
     description: `new test`,
     max_designs: 100,
     population_size: 20,
-    tournament_size: 5,
+    tournament_size: 10,
     mutation_sd: 0.05,
     expiration_days: 30,
     genFile_random_generated: 40,
@@ -622,7 +622,7 @@ function SettingsForm({currentStateManage}) {
 
                         <Tooltip placement="topLeft" title={helpText.mutation_sd}>
                             <Form.Item label="Mutation Standard Deviation" name="mutation_sd" >
-                                <Slider min={0.01} max={1} step={0.01} width="50%"/>
+                                <Slider min={0.001} max={1} step={0.001} width="50%"/>
                             </Form.Item>
                         </Tooltip>
 
