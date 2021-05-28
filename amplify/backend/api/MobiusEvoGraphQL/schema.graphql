@@ -9,6 +9,7 @@ type Job @model @auth(rules: [{ allow: owner }]) {
     population_size: Int
     tournament_size: Int
     survival_size: Int
+    mutation_sd: Float
     createdAt: String
     endedAt: String
     run: Boolean

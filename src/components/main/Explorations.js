@@ -12,7 +12,7 @@ import Help from './utils/Help';
 import "./Explorations.css";
 
 function JobTable({ isDataLoadingState, jobDataState }) {
-    const expandedSettings = ["Max_Designs", "Population_Size", "Tournament_Size", "Survival_Size"];
+    const expandedSettings = ["Max_Designs", "Population_Size", "Tournament_Size", "mutation_sd"];
     const { isDataLoading, setIsDataLoading } = isDataLoadingState;
     const { jobData, setjobData } = jobDataState;
     const sortProps = {

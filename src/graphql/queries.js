@@ -14,6 +14,7 @@ export const getJob = /* GraphQL */ `
       population_size
       tournament_size
       survival_size
+      mutation_sd
       createdAt
       endedAt
       run
@@ -42,6 +43,7 @@ export const listJobs = /* GraphQL */ `
         population_size
         tournament_size
         survival_size
+        mutation_sd
         createdAt
         endedAt
         run

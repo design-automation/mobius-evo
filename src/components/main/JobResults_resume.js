@@ -535,7 +535,7 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
         jobSettings.max_designs = newJobSettings.max_designs;
         jobSettings.population_size = newJobSettings.population_size;
         jobSettings.tournament_size = newJobSettings.tournament_size;
-        jobSettings.survival_size = newJobSettings.survival_size;
+        jobSettings.mutation_sd = newJobSettings.mutation_sd;
         API.graphql(
             graphqlOperation(updateJob, {
                 input: {
@@ -547,7 +547,7 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
                     max_designs: newJobSettings.max_designs,
                     population_size: newJobSettings.population_size,
                     tournament_size: newJobSettings.tournament_size,
-                    survival_size: newJobSettings.survival_size,
+                    mutation_sd: newJobSettings.mutation_sd,
                 },
             })
         )
@@ -562,7 +562,7 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
         jobSettings.max_designs = newJobSettings.max_designs;
         jobSettings.population_size = newJobSettings.population_size;
         jobSettings.tournament_size = newJobSettings.tournament_size;
-        jobSettings.survival_size = newJobSettings.survival_size;
+        jobSettings.mutation_sd = newJobSettings.mutation_sd;
         setJobSettings(jobSettings);
     }
     function handleFinishFail() {
@@ -597,21 +597,10 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
     }
     function checkTournament(_, value) {
         const popVal = form.getFieldValue('population_size');
-        const survivalVal = form.getFieldValue('survival_size');
-        if (value > popVal * 2) {
-            return Promise.reject(new Error('Tournament size must not be larger than 2 * population_size!'));
+        if (value >= popVal * 2) {
+            return Promise.reject(new Error('Tournament size must be smaller than 2 * population_size!'));
         }
-        if (value > survivalVal) {
-            return Promise.resolve();
-        }
-        return Promise.reject(new Error('Tournament size must be larger than Survival size!'));
-    }
-    function checkSurvival(_, value) {
-        const tournamentVal = form.getFieldValue('tournament_size');
-        if (value < tournamentVal) {
-            return Promise.resolve();
-        }
-        return Promise.reject(new Error('Survival size must be smaller than Tournament size!'));
+        return Promise.resolve();
     }
     function checkGenFile(_) {
         const formVal = form.getFieldsValue();
@@ -634,7 +623,7 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
         newDesigns: jobSettings.max_designs,
         population_size: jobSettings.population_size,
         tournament_size: jobSettings.tournament_size,
-        survival_size: jobSettings.survival_size,
+        mutation_sd: jobSettings.mutation_sd,
 
         genFile_total_items: jobSettings.population_size * 2,
         genFile_random_generated: jobSettings.population_size * 2,
@@ -819,9 +808,9 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
                             </Form.Item>
                         </Tooltip>
 
-                        <Tooltip placement="topLeft" title={helpText.survival_size}>
-                            <Form.Item label="Survival Size" name="survival_size" rules={[...rules,{ validator: checkSurvival }]}>
-                                <InputNumber min={1} />
+                        <Tooltip placement="topLeft" title={helpText.mutation_sd}>
+                            <Form.Item label="Mutation Standard Deviation" name="mutation_sd">
+                                <InputNumber min={0.01} max={1} />
                             </Form.Item>
                         </Tooltip>
                     </Collapse.Panel>

@@ -17,6 +17,7 @@ export const createJob = /* GraphQL */ `
       population_size
       tournament_size
       survival_size
+      mutation_sd
       createdAt
       endedAt
       run
@@ -43,6 +44,7 @@ export const updateJob = /* GraphQL */ `
       population_size
       tournament_size
       survival_size
+      mutation_sd
       createdAt
       endedAt
       run
@@ -69,6 +71,7 @@ export const deleteJob = /* GraphQL */ `
       population_size
       tournament_size
       survival_size
+      mutation_sd
       createdAt
       endedAt
       run
