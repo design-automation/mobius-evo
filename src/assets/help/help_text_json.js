@@ -90,7 +90,7 @@ Provide description and search settings.
 * __Number of Designs__: Number of Generations.
 * __Population Size__: Total population in each Generation, regardless of species.
 * __Tournament Size__: Number of individuals selected at random for mutation, regardless of species.
-* __Survival Size__: Number of fittest individuals to survive to the next Generation, regardless of species.
+* __Mutation Standard Deviation__: The standard deviation value that determines the variation in the mutated values of individuals' parameters.
                 `,
             },
             gen_file: {
@@ -263,7 +263,7 @@ Provide description and search settings.
 * __Number of New Designs__: Number of Generations.
 * __Population Size__: Total population in each Generation, regardless of species.
 * __Tournament Size__: Number of individuals selected at random for mutation, regardless of species.
-* __Survival Size__: Number of fittest individuals to survive to the next Generation, regardless of species.
+* __Mutation Standard Deviation__: The standard deviation value that determines the variation in the mutated values of individuals' parameters.
                 `,
             },
             resume_gen_file: {
