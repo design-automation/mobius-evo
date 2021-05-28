@@ -118,6 +118,20 @@
           ]
         }
       ]
+    },
+    "evoScreenshot": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda",
+      "dependsOn": [
+        {
+          "category": "storage",
+          "resourceName": "mobiusevoUserfiles",
+          "attributes": [
+            "BucketName"
+          ]
+        }
+      ]
     }
   }
 }
