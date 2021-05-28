@@ -41,13 +41,12 @@
     "Resources": {
         "LambdaFunction": {
           "Type": "AWS::Lambda::Function",
-          "MemorySize": 4096,
-          "Timeout": 15,
           "Metadata": {
             "aws:asset:path": "./src",
             "aws:asset:property": "Code"
           },
           "Properties": {
+            "MemorySize": 4096,
             "Code": {
                 "S3Bucket": {
                     "Ref": "deploymentBucketName"
