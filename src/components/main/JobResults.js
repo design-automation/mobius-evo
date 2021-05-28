@@ -406,6 +406,25 @@ function ScorePlot({ jobSettings, jobResults, setModelText, setSelectedJobResult
             start: 0,
             end: 1,
         },
+        tooltip: {
+            customContent: (title, data) => {
+                if (data.length === 0) { return ""; }
+                let img_url = ''
+                getS3Public(
+                    data[0].data.owner + "/" + data[0].data.JobID + "/" + data[0].data.id + "_eval.png",
+                    (url) => {
+                        img_url = url;
+                    },
+                    () => {}
+                );
+                return `<div>
+                    <h3 style="margin-bottom: 10px;">${title}</h3>
+                    <p>Status: ${data[0].data.live ? "live" : "dead"}</p>
+                    <p>Score: ${data[0].data.score}</p>
+                    <img src="${img_url}" width="300" height="200" style="margin-bottom: 10px;">
+                </div>`;
+            }
+        }
     };
     if (minY && maxY) {
         config.yAxis = {
