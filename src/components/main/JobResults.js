@@ -819,7 +819,76 @@ function JobResults() {
             return genTableEntry;
         });
     }
-    const expandedSettings = ["Max_Designs", "Population_Size", "Tournament_Size", "mutation_sd"];
+
+    const expandedSettings = ["Max_Designs", "Population_Size", "Tournament_Size"];
+
+    const pastSettingsColumns = [
+        {
+            title: "Start Time",
+            dataIndex: "runStart",
+            key: "runStart",
+            defaultSortOrder: "descend",
+            fixed: 'left',
+            render: isoTime => new Date(isoTime).toLocaleString()
+        },
+        {
+            title: "End Time",
+            dataIndex: "runEnd",
+            key: "runEnd",
+            fixed: 'left',
+            render: isoTime => new Date(isoTime).toLocaleString()
+        },
+        {
+            title: "Run Duration",
+            dataIndex: "runTime",
+            key: "runTime",
+            fixed: 'left',
+            render: runDuration => {
+                const minutes = Math.floor(runDuration / 60)
+                const seconds = Math.floor(runDuration - minutes * 60);
+                if (minutes === 0) {
+                    return seconds + ' secs';
+                }
+                if (minutes === 1) {
+                    return '1 min ' + seconds + ' secs';
+                }
+                return minutes + ' mins ' + seconds + ' secs';
+            },
+        },
+        {
+            title: "Status",
+            dataIndex: "status",
+            key: "status",
+        },
+        {
+            title: "Gen File(s)",
+            dataIndex: "genUrl",
+            key: "genFile",
+            render: (urls) => urls.map(text => text.split("/").pop()).join(', '),
+        },
+        {
+            title: "Eval File",
+            dataIndex: "evalUrl",
+            key: "evalFile",
+            render: (text) => text.split("/").pop(),
+        },
+        ...expandedSettings.map((dataKey) => ({
+            title: dataKey.replace(/_/g, ' '),
+            dataIndex: dataKey.toLowerCase(),
+            key: dataKey.toLowerCase(),
+        })),
+        {
+            title: "Mutation Standard Deviation",
+            dataIndex: "mutation_sd",
+            key: "mutation_sd",
+        }
+    ];
+    let pastSettingsData = [];
+    if (jobSettings) {
+        pastSettingsData = JSON.parse(jobSettings.history);
+    }
+
+
     return (
         <Space direction="vertical" size="large" style={{ width: "inherit" }}>
             <br></br>
@@ -926,23 +995,26 @@ function JobResults() {
                                             <Descriptions.Item label="ID" key="id">
                                                 {jobSettings.id}
                                             </Descriptions.Item>
-                                            <Descriptions.Item label="description" key="description">
+                                            <Descriptions.Item label="Description" key="description">
                                                 {jobSettings.description}
                                             </Descriptions.Item>
-                                            <Descriptions.Item label="last_modified" key="updatedAt">
+                                            <Descriptions.Item label="Last Modified" key="updatedAt">
                                                 {new Date(jobSettings.updatedAt).toLocaleString()}
                                             </Descriptions.Item>
-                                            <Descriptions.Item label="genFile" key="genFile">
+                                            <Descriptions.Item label="Gen File(s)" key="genFile">
                                                 {getDisplayUrlString(jobSettings.genUrl, true)}
                                             </Descriptions.Item>
-                                            <Descriptions.Item label="evalFile" key="evalFile">
+                                            <Descriptions.Item label="Eval File(s)" key="evalFile">
                                                 {getDisplayUrlString(jobSettings.evalUrl)}
                                             </Descriptions.Item>
                                             {expandedSettings.map((dataKey) => (
-                                                <Descriptions.Item label={dataKey} key={dataKey}>
+                                                <Descriptions.Item label={dataKey.replace(/_/g, ' ')} key={dataKey}>
                                                     {jobSettings[dataKey.toLowerCase()]}
                                                 </Descriptions.Item>
                                             ))}
+                                            <Descriptions.Item label="Mutation Standard Deviation" key='mutation_sd'>
+                                                {jobSettings.mutation_sd}
+                                            </Descriptions.Item>
                                             {/* <Descriptions.Item label="expiration" key="expiration">
                                                 {String(Number(jobSettings.expiration) / 86400) + ' day(s)'}
                                             </Descriptions.Item> */}
@@ -950,6 +1022,11 @@ function JobResults() {
                                     </Collapse.Panel>
                                     <Collapse.Panel header="Generative Details" key="2" extra={genExtra("settings_gen_details")}>
                                         <Table dataSource={genTableData} columns={genTableColumns} rowKey="genUrl"></Table>
+                                    </Collapse.Panel>
+                                    <Collapse.Panel header="Past Settings" key="3" extra={genExtra("past_settings")}>
+                                        <Table dataSource={pastSettingsData} columns={pastSettingsColumns} rowKey="runStart"
+                                            scroll={{ x: 2000 }}
+                                            sticky></Table>
                                     </Collapse.Panel>
                                 </Collapse>
                             </Space>
