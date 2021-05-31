@@ -24,7 +24,8 @@ import {
     Row,
     Collapse,
     notification,
-    Modal
+    Modal,
+    Slider
 } from "antd";
 import Help from "./utils/Help";
 import helpJSON from "../../assets/help/help_text_json";
@@ -33,8 +34,8 @@ const testDefault = {
     description: `new test`,
     max_designs: 100,
     population_size: 20,
-    tournament_size: 5,
-    survival_size: 3,
+    tournament_size: 10,
+    mutation_sd: 0.05,
     expiration_days: 30,
     genFile_random_generated: 40,
     genFile_total_items: 40,
@@ -447,10 +448,12 @@ function SettingsForm({currentStateManage}) {
             genUrl: jobSettings.genUrl,
             expiration: null,
             description: jobSettings.description,
+            history: null,
             max_designs: jobSettings.max_designs,
             population_size: jobSettings.population_size,
             tournament_size: jobSettings.tournament_size,
-            survival_size: jobSettings.survival_size,
+            mutation_sd: jobSettings.mutation_sd,
+            survival_size: null,
             errorMessage: null,
         };
         API.graphql(
@@ -488,21 +491,10 @@ function SettingsForm({currentStateManage}) {
     }
     function checkTournament(_, value) {
         const popVal = form.getFieldValue("population_size");
-        const survivalVal = form.getFieldValue("survival_size");
-        if (value > popVal * 2) {
-            return Promise.reject(new Error("Tournament size must not be larger than 2 * population_size!"));
+        if (value >= popVal * 2) {
+            return Promise.reject(new Error("Tournament size must be smaller than 2 * population_size!"));
         }
-        if (value > survivalVal) {
-            return Promise.resolve();
-        }
-        return Promise.reject(new Error("Tournament size must be larger than Survival size!"));
-    }
-    function checkSurvival(_, value) {
-        const tournamentVal = form.getFieldValue("tournament_size");
-        if (value < tournamentVal) {
-            return Promise.resolve();
-        }
-        return Promise.reject(new Error("Survival size must be smaller than Tournament size!"));
+        return Promise.resolve();
     }
 
     function checkGenFile(_) {
@@ -629,21 +621,12 @@ function SettingsForm({currentStateManage}) {
                             </Form.Item>
                         </Tooltip>
 
-                        <Tooltip placement="topLeft" title={helpText.survival_size}>
-                            <Form.Item label="Survival Size" name="survival_size" rules={[...rules, { validator: checkSurvival }]}>
-                                <InputNumber />
+                        <Tooltip placement="topLeft" title={helpText.mutation_sd}>
+                            <Form.Item label="Mutation Standard Deviation" name="mutation_sd" >
+                                <Slider min={0.001} max={1} step={0.001} width="50%"/>
                             </Form.Item>
                         </Tooltip>
 
-                        {/* <Tooltip placement="topLeft" title={helpText.expiration}>
-                            <Form.Item label="Expiration" name="expiration_days" rules={rules}>
-                                <InputNumber 
-                                    formatter={value =>(value === '1')?`1 day`:`${value} days`}
-                                    parser={value => value.replace(/[^0-9.]/g, '')}
-                                    min={1}
-                                />
-                            </Form.Item>
-                        </Tooltip> */}
                     </Collapse.Panel>
                     <Collapse.Panel header="Generative Settings" key="2" extra={genExtra("gen_file")}>
                         <Button htmlType="button" onClick={() => showModalGen(null)}>Add Gen File</Button>

@@ -12,7 +12,7 @@ import Help from './utils/Help';
 import "./Explorations.css";
 
 function JobTable({ isDataLoadingState, jobDataState }) {
-    const expandedSettings = ["Max_Designs", "Population_Size", "Tournament_Size", "Survival_Size"];
+    const expandedSettings = ["Max_Designs", "Population_Size", "Tournament_Size"];
     const { isDataLoading, setIsDataLoading } = isDataLoadingState;
     const { jobData, setjobData } = jobDataState;
     const sortProps = {
@@ -83,6 +83,12 @@ function JobTable({ isDataLoadingState, jobDataState }) {
             key: dataKey.toLowerCase(),
             ...sortProps,
         })),
+        {
+            title: "Mutation Standard Deviation",
+            dataIndex: "mutation_sd",
+            key: "mutation_sd",
+            ...sortProps
+        },
         {
             title: "Action",
             dataIndex: "action",
@@ -249,6 +255,7 @@ function Explorations() {
             .then((queriedResults) => {
                 const jobList = queriedResults.data.listJobs.items;
                 const jobData = jobList.map((data, index) => {
+                    if (!data.mutation_sd) { data.mutation_sd = 0.05; }
                     return {
                         key: index + 1,
                         title: data.description,

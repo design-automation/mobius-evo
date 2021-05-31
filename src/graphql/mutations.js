@@ -13,10 +13,12 @@ export const createJob = /* GraphQL */ `
       genUrl
       expiration
       description
+      history
       max_designs
       population_size
       tournament_size
       survival_size
+      mutation_sd
       createdAt
       endedAt
       run
@@ -39,10 +41,12 @@ export const updateJob = /* GraphQL */ `
       genUrl
       expiration
       description
+      history
       max_designs
       population_size
       tournament_size
       survival_size
+      mutation_sd
       createdAt
       endedAt
       run
@@ -65,10 +69,12 @@ export const deleteJob = /* GraphQL */ `
       genUrl
       expiration
       description
+      history
       max_designs
       population_size
       tournament_size
       survival_size
+      mutation_sd
       createdAt
       endedAt
       run

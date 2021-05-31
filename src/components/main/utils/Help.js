@@ -36,7 +36,7 @@ function Help({ page, part }) {
             <Tooltip placement="topLeft" title={hoverText}>
                 <Button type="text" shape="circle" icon={<QuestionCircleOutlined />} size="small" onClick={showModal}></Button>
             </Tooltip>
-            <Modal title={popupTitle} visible={isModalVisible} footer={null} onOk={closeModal} onCancel={closeModal} width={1000}>
+            <Modal title={"Help: " + popupTitle} visible={isModalVisible} footer={null} onOk={closeModal} onCancel={closeModal} width={1000}>
                 <div dangerouslySetInnerHTML={{ __html: popupText }}></div>
             </Modal>
         </>

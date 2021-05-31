@@ -161,7 +161,7 @@ function Landing() {
                                     <Descriptions.Item label="Number of Designs">Number of Generations</Descriptions.Item>
                                     <Descriptions.Item label="Population Size">Total population in each Generation, regardless of species</Descriptions.Item>
                                     <Descriptions.Item label="Tournament Size">Number of individuals selected at random for mutation, regardless of species</Descriptions.Item>
-                                    <Descriptions.Item label="Survival Size">Number of fittest individuals to survive to the next Generation, regardless of species</Descriptions.Item>
+                                    <Descriptions.Item label="Mutation Standard Deviation">The standard deviation value that determines the variation in the mutated values of individuals' parameters</Descriptions.Item>
                                 </Descriptions>
                             </Collapse.Panel>
                             <Collapse.Panel header="4. Upload Gen and Eval Files" key="d">
