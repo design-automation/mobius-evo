@@ -30,7 +30,7 @@ import { ReactComponent as View } from "../../assets/view.svg";
 import { ResumeForm } from "./JobResults_resume.js";
 import Help from "./utils/Help";
 import { getS3Public } from "../../amplify-apis/userFiles";
-import { QuestionCircleOutlined } from "@ant-design/icons";
+import { ConsoleSqlOutlined, QuestionCircleOutlined } from "@ant-design/icons";
 
 import "./JobResults.css";
 
@@ -417,11 +417,18 @@ function ScorePlot({ jobSettings, jobResults, setModelText, setSelectedJobResult
                     },
                     () => {}
                 );
-                return `<div>
-                    <h3 style="margin-bottom: 10px;">${title}</h3>
+                const params = JSON.parse(data[0].data.params);
+                const paramString = Object.keys(params).map(key => {
+                    return '<li style="margin-left: 20px;">' + key + ': ' + params[key] + '</li>'; 
+                }).join('\n')
+                return `<div style="padding: 10px 0px 10px 0px;">
+                    <h3 style="margin-bottom: 15px;">${title}</h3>
                     <p>Status: ${data[0].data.live ? "live" : "dead"}</p>
                     <p>Score: ${data[0].data.score}</p>
-                    <img src="${img_url}" width="300" height="200" style="margin-bottom: 10px;">
+                    <p style="margin-bottom: 0px;">Parameters:</p>
+                    ${paramString}
+                    <br>
+                    <img src="${img_url}" width="300" height="200" >
                 </div>`;
             }
         }
