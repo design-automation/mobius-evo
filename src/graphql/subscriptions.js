@@ -10,6 +10,7 @@ export const onCreateJob = /* GraphQL */ `
       genUrl
       expiration
       description
+      history
       max_designs
       population_size
       tournament_size
@@ -34,6 +35,7 @@ export const onUpdateJob = /* GraphQL */ `
       genUrl
       expiration
       description
+      history
       max_designs
       population_size
       tournament_size
@@ -58,6 +60,7 @@ export const onDeleteJob = /* GraphQL */ `
       genUrl
       expiration
       description
+      history
       max_designs
       population_size
       tournament_size

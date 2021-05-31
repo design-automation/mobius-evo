@@ -5,6 +5,7 @@ type Job @model @auth(rules: [{ allow: owner }]) {
     genUrl: [String!]
     expiration: Int
     description: String
+    history: String
     max_designs: Int
     population_size: Int
     tournament_size: Int

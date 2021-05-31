@@ -448,6 +448,7 @@ function SettingsForm({currentStateManage}) {
             genUrl: jobSettings.genUrl,
             expiration: null,
             description: jobSettings.description,
+            history: null,
             max_designs: jobSettings.max_designs,
             population_size: jobSettings.population_size,
             tournament_size: jobSettings.tournament_size,
