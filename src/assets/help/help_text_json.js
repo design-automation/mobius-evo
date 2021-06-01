@@ -30,6 +30,7 @@ const helpJSON = {
 
             settings_job_settings: "Search Settings Help",
             settings_gen_details: "Generative Details Help",
+            settings_past_settings: "Previous Search Settings",
             resume_new_settings_1: "Resume Search Help",
             resume_gen_file: "Resume Generative Help",
             resume_eval_file: "Resume Evaluative Help",
@@ -251,6 +252,12 @@ Details on Generative Files
 * __Live Items__: Total number of Live Designs generated from Generation File
 
                 `,
+            },
+            settings_past_settings: {
+                title: "Previous Search Settings",
+                text: `
+Previous Search Settings
+`
             },
             resume_new_settings_1: {
                 title: "New Search Settings",

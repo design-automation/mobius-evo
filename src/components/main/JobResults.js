@@ -1023,7 +1023,7 @@ function JobResults() {
                                     <Collapse.Panel header="Generative Details" key="2" extra={genExtra("settings_gen_details")}>
                                         <Table dataSource={genTableData} columns={genTableColumns} rowKey="genUrl"></Table>
                                     </Collapse.Panel>
-                                    <Collapse.Panel header="Past Settings" key="3" extra={genExtra("past_settings")}>
+                                    <Collapse.Panel header="Past Settings" key="3" extra={genExtra("settings_past_settings")}>
                                         <Table dataSource={pastSettingsData} columns={pastSettingsColumns} rowKey="runStart"
                                             scroll={{ x: 2000 }}
                                             sticky></Table>
