@@ -22,7 +22,7 @@ import {
     Alert,
     notification,
 } from "antd";
-import { Column, Scatter } from "@ant-design/charts";
+import { Column, Scatter, Line } from "@ant-design/charts";
 import { AuthContext } from "../../Contexts";
 import Iframe from "react-iframe";
 // import { ReactComponent as Download } from "../../assets/download.svg";
@@ -355,10 +355,68 @@ function FilterForm({ modelParamsState, jobResultsState, filteredJobResultsState
     ) : null;
 }
 
+function MinMaxPlot({ jobSettings, jobResults }) {
+    const generationData = {};
+    jobResults.forEach((result) => {
+        if (!result.score) { return; }
+        if (!generationData[result.generation]) {
+            generationData[result.generation] = [result.score];
+        } else {
+            generationData[result.generation].push(result.score);
+        }
+    });
+    const plotData = [];
+    Object.keys(generationData).map(generation => {
+        let minVal, maxVal, sum = 0;
+        const count = generationData[generation].length
+        generationData[generation].forEach(score => {
+            if (!minVal) { minVal = score; }
+            if (!maxVal) { maxVal = score; }
+            minVal = Math.min(minVal, score);
+            maxVal = Math.max(maxVal, score);
+            sum += score
+        })
+        plotData.push({
+            dataType: 'max',
+            generation: generation,
+            score: maxVal
+        })
+        plotData.push({
+            dataType: 'avg',
+            generation: generation,
+            score: sum / count
+        })
+        plotData.push({
+            dataType: 'min',
+            generation: generation,
+            score: minVal
+        })
+
+    });
+    console.log(plotData)
+    const config = {
+        title: {
+            visible: true,
+            text: "Progress Plot",
+        },
+        description: {
+            visible: true,
+            text: "Score Progression over Generations",
+        },
+        data: plotData,
+        xField: "generation",
+        yField: "score",
+        seriesField: 'dataType',
+        color: ['#cb302d', '#e3ca8c', '#82d1de'],
+    
+    };
+    return <Line {...config} />;
+}
+
 function ProgressPlot({ jobSettings, jobResults }) {
     const plotData = JSON.parse(JSON.stringify(jobResults));
 
-    let minY, maxY = 0, maxGen = 0;
+    let minY, maxY = 0;
     plotData.forEach((result) => {
         if (result.score) {
             if (!minY) {
@@ -368,7 +426,7 @@ function ProgressPlot({ jobSettings, jobResults }) {
             maxY = Math.max(maxY, result.score);
         }
         result.genFile = result.genUrl.split("/").pop() + " - " + (result.live ? "live" : "dead");
-        maxGen = Math.max(maxGen, result.generation)
+        result.generation = result.generation.toString();
     });
     const config = {
         title: {
@@ -379,10 +437,11 @@ function ProgressPlot({ jobSettings, jobResults }) {
             visible: true,
             text: "Score Progression over Generations",
         },
-        xAxis: {
-            tickInterval: 1,
-            min: 0,
-            max: maxGen + 1
+        yAxis: {
+            score: {
+                min: Math.floor(minY),
+                max: Math.ceil(maxY),
+            },
         },
         data: plotData,
         xField: "generation",
@@ -392,14 +451,6 @@ function ProgressPlot({ jobSettings, jobResults }) {
         appendPadding: 10,
         size: 4,
     };
-    if (jobSettings.jobStatus === "completed") {
-        config.meta = {
-            score: {
-                min: Math.floor(minY),
-                max: Math.ceil(maxY),
-            },
-        };
-    }
     return <Scatter {...config} />;
 }
 
@@ -452,6 +503,7 @@ function ScorePlot({ jobResults}) {
                 return `<div style="padding: 10px 0px 10px 0px;">
                     <h3 style="margin-bottom: 15px;">${title}</h3>
                     <p>Status: ${data[0].data.live ? "live" : "dead"}</p>
+                    <p>Generation: ${data[0].data.generation}</p>
                     <p>Score: ${data[0].data.score}</p>
                     <p style="margin-bottom: 0px;">Parameters:</p>
                     ${paramString}
@@ -947,6 +999,10 @@ function JobResults() {
                                             </Collapse.Panel>
                                             <Collapse.Panel header="Progress Plot" key="2" extra={genExtra("result_progress_plot")}>
                                                 <ProgressPlot
+                                                    jobSettings={jobSettings}
+                                                    jobResults={filteredJobResults ? filteredJobResults : jobResults}
+                                                />
+                                                <MinMaxPlot
                                                     jobSettings={jobSettings}
                                                     jobResults={filteredJobResults ? filteredJobResults : jobResults}
                                                 />
