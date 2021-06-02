@@ -164,7 +164,7 @@
         },
         "Runtime": "nodejs14.x",
         "Layers": [
-          "arn:aws:lambda:us-east-1:114056409474:layer:evo_layer:19"
+          "arn:aws:lambda:us-east-1:114056409474:layer:evo_layer:20"
         ],
         "Timeout": "900",
         "MemorySize": 1024

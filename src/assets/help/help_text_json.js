@@ -141,7 +141,7 @@ Additional Initialisation Settings (preset).
 
 * __Total Starting Items__: 2*population size (search settings).
 
-* __Random Generated__: 2*population size (search settings).
+* __Randomly Generated__: 2*population size (search settings).
 
                 `,
             },

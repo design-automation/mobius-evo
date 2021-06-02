@@ -22,7 +22,7 @@ const notify = (title, text, isWarn = false) => {
     });
 };
 
-function FileSelectionModal({ isModalVisibleState, jobSettingsState, jobResultsState, replacedUrl, replaceEvalCheck }) {
+function FileSelectionModal({form, isModalVisibleState, jobSettingsState, jobResultsState, replacedUrl, replaceEvalCheck }) {
     const [s3Files, setS3Files] = useState([]);
     const [uploadedFiles, setUploadedFiles] = useState([]);
     const [isTableLoading, setIsTableLoading] = useState(true);
@@ -42,6 +42,7 @@ function FileSelectionModal({ isModalVisibleState, jobSettingsState, jobResultsS
     };
     const handleGenOk = async () => {
         const allPromises = [];
+        const formUpdate = {};
         for (const selectedRow of selectedRows) {
             const newFile = selectedRow.filename;
             if (!newFile) {
@@ -133,10 +134,12 @@ function FileSelectionModal({ isModalVisibleState, jobSettingsState, jobResultsS
                         .then()
                         .catch((err) => console.log(err))
                 );
+                formUpdate["genFile_" + newFile] = 0
                 setJobResults(jobResults.concat(newJobs));
             }
         }
         await Promise.all(allPromises);
+        form.setFieldsValue(formUpdate);
         setSelectedRows([])
         setSelectedRowKeys([])
         setIsModalVisible(false);
@@ -513,7 +516,7 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
             notify('Unable to Resume Search', 'Please add least one Gen File!', true);
             return;
         }
-        const newJobSettings = { ...form.getFieldsValue() };
+        const newJobSettings = form.getFieldsValue();
         newJobSettings.description = jobSettings.description;
         newJobSettings.genUrl = {};
         newJobSettings.genKeys = jobSettings.genUrl.map((genUrl) => {
@@ -570,8 +573,8 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
     }
     function onNewDesignChange(e) {
         setTimeout(() => {
-            const newDesigns = Number(form.getFieldValue("newDesigns"));
-            const formUpdate = { max_designs: jobSettings.max_designs + newDesigns };
+            const new_designs = Number(form.getFieldValue("new_designs"));
+            const formUpdate = { max_designs: jobSettings.max_designs + new_designs };
             form.setFieldsValue(formUpdate);
         }, 0);
     }
@@ -580,18 +583,13 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
     }
     function onNumChange(e) {
         setTimeout(() => {
-            const starting_population = Number(form.getFieldValue("population_size")) * 2;
             let totalCount = 0;
             jobSettings.genUrl.forEach((genUrl) => {
                 const genFile = genUrl.split("/").pop();
                 const inpID = "genFile_" + genFile;
                 totalCount += Number(form.getFieldValue(inpID));
             });
-            totalCount += Number(form.getFieldValue("genFile_mutate"));
-            let countDiff = starting_population - totalCount;
-            const formUpdate = { genFile_total_items: starting_population };
-            if (countDiff < 0) { countDiff = 0; }
-            formUpdate["genFile_random_generated"] = countDiff;
+            const formUpdate = { genFile_total_items: totalCount };
             form.setFieldsValue(formUpdate);
         }, 0);
     }
@@ -604,34 +602,31 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
     }
     function checkGenFile(_) {
         const formVal = form.getFieldsValue();
-        const totalVal = Number(formVal.genFile_total_items);
         let totalCount = 0;
         jobSettings.genUrl.forEach((genUrl) => {
             const genFile = genUrl.split("/").pop();
             const inpID = "genFile_" + genFile;
             totalCount += Number(formVal[inpID]);
         });
-        totalCount += Number(form.getFieldValue("genFile_mutate"));
-
-        if (totalVal < totalCount) {
-            return Promise.reject(new Error('Total number of genFile parameters cannot be higher than Total Starting Items'));
+        if ((totalCount- formInitialValues.initial_live_items) > formVal.new_designs) {
+            return Promise.reject(new Error('Total number of new genFile parameters cannot be higher than max number of new designs'));
         }
         return Promise.resolve();
     }
     const formInitialValues = {
         max_designs: jobSettings.max_designs * 2,
-        newDesigns: jobSettings.max_designs,
+        new_designs: jobSettings.max_designs,
         population_size: jobSettings.population_size,
         tournament_size: jobSettings.tournament_size,
         mutation_sd: jobSettings.mutation_sd,
 
-        genFile_total_items: jobSettings.population_size * 2,
-        genFile_random_generated: jobSettings.population_size * 2,
-        genFile_mutate: 0,
+        genFile_total_items: jobSettings.population_size,
+        initial_live_items : 0
+        // genFile_mutate: 0,
     };
     if (jobSettings.jobStatus === "cancelled") {
         formInitialValues.max_designs = jobSettings.max_designs;
-        formInitialValues.newDesigns = 0;
+        formInitialValues.new_designs = 0;
     }
     jobSettings.genUrl.forEach((url) => {
         const genFile = url.split("/").pop();
@@ -643,7 +638,7 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
         }
         const genFile = result.genUrl.split("/").pop();
         formInitialValues["genFile_" + genFile] += 1;
-        formInitialValues.genFile_random_generated -= 1;
+        formInitialValues.initial_live_items += 1;
     });
 
     const showModalGen = (url) => {
@@ -791,7 +786,7 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
                         </Tooltip>
 
                         <Tooltip placement="topLeft" title={helpText.new_designs}>
-                            <Form.Item label="Number of New Designs" name="newDesigns" rules={rules}>
+                            <Form.Item label="Number of New Designs" name="new_designs" rules={rules}>
                                 <InputNumber min={0} onChange={onNewDesignChange} />
                             </Form.Item>
                         </Tooltip>
@@ -836,17 +831,17 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
                                 </Form.Item>
                             );
                         })}
-                        <Tooltip placement="topLeft" title={helpText.mutate}>
+                        {/* <Tooltip placement="topLeft" title={helpText.mutate}>
                             <Form.Item label="Mutate from Existing" name="genFile_mutate" rules={rules}>
                                 <InputNumber min={0} onChange={onNumChange} />
                             </Form.Item>
                         </Tooltip>
 
                         <Tooltip placement="topLeft" title={helpText.random_generated}>
-                            <Form.Item label="Random Generated" name="genFile_random_generated">
+                            <Form.Item label="Randomly Generated" name="genFile_random_generated">
                                 <InputNumber disabled />
                             </Form.Item>
-                        </Tooltip>
+                        </Tooltip> */}
                     </Collapse.Panel>
                 </Collapse>
                 <br />
@@ -857,6 +852,7 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
                 </Row>
             </Form>
             <FileSelectionModal
+                form = {form}
                 isModalVisibleState={{ isModalVisible, setIsModalVisible }}
                 jobSettingsState={{ jobSettings, setJobSettings }}
                 jobResultsState={{ jobResults, setJobResults }}

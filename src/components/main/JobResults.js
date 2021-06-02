@@ -562,7 +562,7 @@ function ResultTable({ jobResults, contextUrl }) {
             render: (evalModel, allData) => (
                 <div>
                     <View
-                        onClick={async () => {
+                        onClick={() => {
                             document.getElementById("hiddenInput").value = evalModel;
                             viewModel(evalModel, [contextUrl]);
                             updateTextArea(allData.resultText);
