@@ -358,8 +358,7 @@ function FilterForm({ modelParamsState, jobResultsState, filteredJobResultsState
 function ProgressPlot({ jobSettings, jobResults }) {
     const plotData = JSON.parse(JSON.stringify(jobResults));
 
-    let minY,
-        maxY = 0;
+    let minY, maxY = 0, maxGen = 0;
     plotData.forEach((result) => {
         if (result.score) {
             if (!minY) {
@@ -369,6 +368,7 @@ function ProgressPlot({ jobSettings, jobResults }) {
             maxY = Math.max(maxY, result.score);
         }
         result.genFile = result.genUrl.split("/").pop() + " - " + (result.live ? "live" : "dead");
+        maxGen = Math.max(maxGen, result.generation)
     });
     const config = {
         title: {
@@ -378,6 +378,11 @@ function ProgressPlot({ jobSettings, jobResults }) {
         description: {
             visible: true,
             text: "Score Progression over Generations",
+        },
+        xAxis: {
+            tickInterval: 1,
+            min: 0,
+            max: maxGen + 1
         },
         data: plotData,
         xField: "generation",
