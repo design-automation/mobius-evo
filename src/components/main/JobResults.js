@@ -408,7 +408,11 @@ function MinMaxPlot({ jobSettings, jobResults }) {
         yField: "score",
         seriesField: 'dataType',
         color: ['#cb302d', '#e3ca8c', '#82d1de'],
-    
+        xAxis: {
+            title: {
+                text: "Generation",
+            }
+        },
     };
     return <Line {...config} />;
 }
@@ -436,6 +440,11 @@ function ProgressPlot({ jobSettings, jobResults }) {
         description: {
             visible: true,
             text: "Score Progression over Generations",
+        },
+        xAxis: {
+            title: {
+                text: "Generation",
+            }
         },
         yAxis: {
             score: {
@@ -998,10 +1007,10 @@ function JobResults() {
                                                 />
                                             </Collapse.Panel>
                                             <Collapse.Panel header="Progress Plot" key="2" extra={genExtra("result_progress_plot")}>
-                                                <ProgressPlot
+                                                {/* <ProgressPlot
                                                     jobSettings={jobSettings}
                                                     jobResults={filteredJobResults ? filteredJobResults : jobResults}
-                                                />
+                                                /> */}
                                                 <MinMaxPlot
                                                     jobSettings={jobSettings}
                                                     jobResults={filteredJobResults ? filteredJobResults : jobResults}
