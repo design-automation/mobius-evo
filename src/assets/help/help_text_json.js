@@ -23,7 +23,8 @@ const helpJSON = {
         result_page: {
             main: "Result Help",
             result_filter_form: "Filter Form Help",
-            result_progress_plot: "Progress Form Help",
+            result_progress_plot: "Progress Plot Help",
+            result_parallel_plot: "Parallel Plot Help",
             result_score_plot: "Score Plot Help",
             result_mobius_viewer: "Mobius Viewer Help",
             result_result_table: "Result Table Help",
@@ -177,6 +178,14 @@ Displays Evolution progress in a point plot. Each point represents a Design in t
 * __Legend__: Clicking on the legend of each plot will toggle its display on the plot.
 
                 `,
+            },
+            result_parallel_plot: {
+                title: "Parallel Plot",
+                text: `
+
+---
+
+`,
             },
             result_score_plot: {
                 title: "Score Plot",

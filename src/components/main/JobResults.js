@@ -3,7 +3,6 @@ import { API, graphqlOperation } from "aws-amplify";
 import { generationsByJobId, getJob } from "../../graphql/queries";
 import { updateJob } from "../../graphql/mutations";
 import * as QueryString from "query-string";
-import { Link } from "react-router-dom";
 import {
     Row,
     Space,
@@ -31,12 +30,12 @@ import { ResumeForm } from "./JobResults_resume.js";
 import Help from "./utils/Help";
 import { getS3Public } from "../../amplify-apis/userFiles";
 import { ConsoleSqlOutlined, QuestionCircleOutlined } from "@ant-design/icons";
+import {XYPlot, DecorativeAxis, LineSeries} from 'react-vis';
 
 import "./JobResults.css";
 
 const MOBIUS_VIEWER_URL = "https://design-automation.github.io/mobius-viewer-dev-0-7/";
 const { TabPane } = Tabs;
-
 function paramsRegex(params) {
     return JSON.parse(params);
     // const splits = params.replace(/\{|\}/g, '').split(',');
@@ -355,7 +354,100 @@ function FilterForm({ modelParamsState, jobResultsState, filteredJobResultsState
     ) : null;
 }
 
-function MinMaxPlot({ jobSettings, jobResults }) {
+function ParallelPlot({ jobResults }) {
+    const [width, setWidth] = useState(window.innerWidth);
+    const [hoveredNode, setHoveredNode] = useState(null);
+    useEffect(() => {
+        function handleResize() {
+            setWidth(window.innerWidth)
+        }
+        window.addEventListener('resize', handleResize)
+    })
+    const colors_pallete = ["#13c2c2", "#f5317f", "#f56a00", "#7265e6", "#ffbf00", "#00a2ae", "#bfbfbf", "#f04134", "#108ee9", "#00a854"];
+    const colors = {};
+
+    const plotData = []
+    const domain = {
+        score: {min: 0, max: 0}
+    };
+    
+    jobResults.forEach((result) => {
+        if (!result.score) { return; }
+        const parameters = JSON.parse(result.params);
+        Object.keys(parameters).forEach(paramKey => {
+            if (!domain[paramKey]) { domain[paramKey] = {min: parameters[paramKey], max: parameters[paramKey]}; }
+            domain[paramKey].min = Math.min(domain[paramKey].min, parameters[paramKey]);
+            domain[paramKey].max = Math.max(domain[paramKey].max, parameters[paramKey]);
+            domain[paramKey].range = (domain[paramKey].max - domain[paramKey].min);
+        });
+        domain.score.min = Math.min(domain.score.min, result.score);
+        domain.score.max = Math.max(domain.score.max, result.score);
+        domain.score.range = (domain.score.max - domain.score.min);
+
+    });
+    jobResults.forEach((result) => {
+        if (!result.score) { return; }
+        const parameters = JSON.parse(result.params);
+        const resultData = []
+        const genFile = result.genUrl.split("/").pop() + " - " + (result.live ? "live" : "dead");
+        if (!colors[genFile]) {
+            colors[genFile] = colors_pallete.pop();
+        }
+        Object.keys(parameters).forEach(paramKey => {
+            resultData.push({
+                y: (parameters[paramKey] - domain[paramKey].min) / domain[paramKey].range,
+                x: paramKey
+            });
+        });
+        resultData.push({
+            y: (result.score - domain.score.min) / domain.score.range,
+            x: "score"
+        });
+        plotData.push({
+            id: result.GenID,
+            data: resultData,
+            color: colors[genFile]
+        });
+    });
+    const MARGIN = {
+        left: 10,
+        right: 10,
+        top: 10,
+        bottom: 10
+    };
+    return (
+    <XYPlot
+        width={(width - 100)}
+        height={((width - 100) / 3)}
+        xType="ordinal"
+        margin={MARGIN}
+        onMouseLeave={() => setHoveredNode(null)}
+
+    >
+        {plotData.map((series, index) => {
+        return <LineSeries data={series.data} key={`series-${index}`} color={series.color} 
+        onSeriesMouseOver={_ => setHoveredNode(series)}
+        strokeWidth={1}
+        />;
+        })}
+        {hoveredNode? <LineSeries data={hoveredNode.data} key={`series-hovered`} color={"#000000"}
+        strokeWidth={3}
+        />: null}
+        {plotData[0].data.map((cell, index) => {
+        return (
+            <DecorativeAxis
+            key={`${index}-axis`}
+            axisStart={{x: cell.x, y: 0}}
+            axisEnd={{x: cell.x, y: 1}}
+            axisDomain={[domain[cell.x].min, domain[cell.x].max]}
+            />
+        );
+        })}
+    </XYPlot>
+    );
+}
+
+function MinMaxPlot({ jobResults }) {
     const generationData = {};
     jobResults.forEach((result) => {
         if (!result.score) { return; }
@@ -365,17 +457,18 @@ function MinMaxPlot({ jobSettings, jobResults }) {
             generationData[result.generation].push(result.score);
         }
     });
+    let minY = Infinity, maxY = - Infinity;
     const plotData = [];
     Object.keys(generationData).map(generation => {
-        let minVal, maxVal, sum = 0;
+        let minVal = Infinity, maxVal = - Infinity, sum = 0;
         const count = generationData[generation].length
         generationData[generation].forEach(score => {
-            if (!minVal) { minVal = score; }
-            if (!maxVal) { maxVal = score; }
             minVal = Math.min(minVal, score);
             maxVal = Math.max(maxVal, score);
             sum += score
         })
+        minY = Math.min(minVal, minY);
+        maxY = Math.max(maxVal, maxY);
         plotData.push({
             dataType: 'max',
             generation: generation,
@@ -393,7 +486,7 @@ function MinMaxPlot({ jobSettings, jobResults }) {
         })
 
     });
-    console.log(plotData)
+    console.log(minY, maxY)
     const config = {
         title: {
             visible: true,
@@ -413,6 +506,10 @@ function MinMaxPlot({ jobSettings, jobResults }) {
                 text: "Generation",
             }
         },
+        yAxis: {
+            min: Math.floor(minY),
+            max: Math.ceil(maxY),
+        },
     };
     return <Line {...config} />;
 }
@@ -420,12 +517,9 @@ function MinMaxPlot({ jobSettings, jobResults }) {
 function ProgressPlot({ jobSettings, jobResults }) {
     const plotData = JSON.parse(JSON.stringify(jobResults));
 
-    let minY, maxY = 0;
+    let minY = Infinity, maxY = - Infinity;
     plotData.forEach((result) => {
         if (result.score) {
-            if (!minY) {
-                minY = result.score;
-            }
             minY = Math.min(minY, result.score);
             maxY = Math.max(maxY, result.score);
         }
@@ -997,7 +1091,7 @@ function JobResults() {
                                 {!isLoading ? (
                                     <Space direction="vertical" size="large" style={{ width: "100%" }}>
                                         <ErrorList jobResults={jobResults} jobSettings={jobSettings}></ErrorList>
-                                        <Collapse defaultActiveKey={["3", "4"]}>
+                                        <Collapse defaultActiveKey={["4", "5"]}>
                                             <Collapse.Panel header="Filter Form" key="1" extra={genExtra("result_filter_form")}>
                                                 <FilterForm
                                                     modelParamsState={{ modelParams, setModelParams }}
@@ -1011,22 +1105,22 @@ function JobResults() {
                                                     jobSettings={jobSettings}
                                                     jobResults={filteredJobResults ? filteredJobResults : jobResults}
                                                 /> */}
-                                                <MinMaxPlot
-                                                    jobSettings={jobSettings}
-                                                    jobResults={filteredJobResults ? filteredJobResults : jobResults}
-                                                />
+                                                <MinMaxPlot jobResults={filteredJobResults ? filteredJobResults : jobResults} />
                                             </Collapse.Panel>
-                                            <Collapse.Panel header="Score Plot" key="3" extra={genExtra("result_score_plot")}>
+                                            {/* <Collapse.Panel header="Parallel Plot" key="3" extra={genExtra("result_parallel_plot")}>
+                                                <ParallelPlot jobResults={filteredJobResults ? filteredJobResults : jobResults} />
+                                            </Collapse.Panel> */}
+                                            <Collapse.Panel header="Score Plot" key="4" extra={genExtra("result_score_plot")}>
                                                 <ScorePlot
                                                     jobResults={filteredJobResults ? filteredJobResults : jobResults}
                                                 />
                                             </Collapse.Panel>
-                                            <Collapse.Panel header="Mobius Viewer" key="4" extra={genExtra("result_mobius_viewer")}>
+                                            <Collapse.Panel header="Mobius Viewer" key="5" extra={genExtra("result_mobius_viewer")}>
                                                 <ViewTextArea
                                                     contextURLState={{contextUrl, setContextUrl}}
                                                 ></ViewTextArea>
                                             </Collapse.Panel>
-                                            <Collapse.Panel header="Result Table" key="5" extra={genExtra("result_result_table")}>
+                                            <Collapse.Panel header="Result Table" key="6" extra={genExtra("result_result_table")}>
                                                 <ResultTable
                                                     jobResults={filteredJobResults ? filteredJobResults : jobResults}
                                                     contextUrl={contextUrl}
