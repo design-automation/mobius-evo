@@ -30,7 +30,7 @@ import { ResumeForm } from "./JobResults_resume.js";
 import Help from "./utils/Help";
 import { getS3Public } from "../../amplify-apis/userFiles";
 import { ConsoleSqlOutlined, QuestionCircleOutlined } from "@ant-design/icons";
-import {XYPlot, DecorativeAxis, LineSeries} from 'react-vis';
+import {XYPlot, DecorativeAxis, LineSeries, DiscreteColorLegend, XAxis} from 'react-vis';
 
 import "./JobResults.css";
 
@@ -357,20 +357,22 @@ function FilterForm({ modelParamsState, jobResultsState, filteredJobResultsState
 function ParallelPlot({ jobResults }) {
     const [width, setWidth] = useState(window.innerWidth);
     const [hoveredNode, setHoveredNode] = useState(null);
+    const [hiddenGen, setHiddenGen] = useState({});
     useEffect(() => {
         function handleResize() {
             setWidth(window.innerWidth)
         }
         window.addEventListener('resize', handleResize)
     })
-    const colors_pallete = ["#13c2c2", "#f5317f", "#f56a00", "#7265e6", "#ffbf00", "#00a2ae", "#bfbfbf", "#f04134", "#108ee9", "#00a854"];
+    const colors_pallete = ["#A16F47", "#B400C2", "#683F8F", "#09AABD", "#3C9E7F", 
+                            "#B81E00", "#AB4B5D", "#0000A6", "#4169A6", "#0BB524"];
     const colors = {};
 
     const plotData = []
     const domain = {
-        score: {min: 0, max: 0}
+        score: {min: Infinity, max: -Infinity}
     };
-    
+    const legendItems = [];
     jobResults.forEach((result) => {
         if (!result.score) { return; }
         const parameters = JSON.parse(result.params);
@@ -392,6 +394,10 @@ function ParallelPlot({ jobResults }) {
         const genFile = result.genUrl.split("/").pop() + " - " + (result.live ? "live" : "dead");
         if (!colors[genFile]) {
             colors[genFile] = colors_pallete.pop();
+            legendItems.push({
+                title: genFile, 
+                color: colors[genFile]
+            })
         }
         Object.keys(parameters).forEach(paramKey => {
             resultData.push({
@@ -416,34 +422,48 @@ function ParallelPlot({ jobResults }) {
         bottom: 10
     };
     return (
-    <XYPlot
-        width={(width - 100)}
-        height={((width - 100) / 3)}
-        xType="ordinal"
-        margin={MARGIN}
-        onMouseLeave={() => setHoveredNode(null)}
+    <>
+        <DiscreteColorLegend
+            items = {legendItems}
+            orientation='horizontal'
+            strokeWidth={2}
+        ></DiscreteColorLegend>
+        <XYPlot
+            width={(width - 100)}
+            height={(width/2 - 200)}
+            xType="ordinal"
+            // margin={MARGIN}
+            onMouseLeave={() => setHoveredNode(null)}
+        >
+            <XAxis/>
+            {plotData.map((series, index) => {
+            return <LineSeries data={series.data} key={`series-${index}`} color={series.color} 
+            onSeriesMouseOver={_ => setHoveredNode(series)}
+            strokeWidth={1}
+            />;
+            })}
+            {hoveredNode?<LineSeries data={hoveredNode.data} key={`series-hovered-border`}
+            color="#ff"
+            strokeWidth={7}
+            />: null}
+            {hoveredNode?<LineSeries data={hoveredNode.data} key={`series-hovered-fill`}
+            color={hoveredNode.color}
+            strokeWidth={4}
+            >
+            </LineSeries>: null}
+            {plotData[0].data.map((cell, index) => {
+            return (
+                <DecorativeAxis
+                key={`${index}-axis`}
+                axisStart={{x: cell.x, y: 0}}
+                axisEnd={{x: cell.x, y: 1}}
+                axisDomain={[domain[cell.x].min, domain[cell.x].max]}
+                />
+            );
+            })}
 
-    >
-        {plotData.map((series, index) => {
-        return <LineSeries data={series.data} key={`series-${index}`} color={series.color} 
-        onSeriesMouseOver={_ => setHoveredNode(series)}
-        strokeWidth={1}
-        />;
-        })}
-        {hoveredNode? <LineSeries data={hoveredNode.data} key={`series-hovered`} color={"#000000"}
-        strokeWidth={3}
-        />: null}
-        {plotData[0].data.map((cell, index) => {
-        return (
-            <DecorativeAxis
-            key={`${index}-axis`}
-            axisStart={{x: cell.x, y: 0}}
-            axisEnd={{x: cell.x, y: 1}}
-            axisDomain={[domain[cell.x].min, domain[cell.x].max]}
-            />
-        );
-        })}
-    </XYPlot>
+        </XYPlot>
+    </>
     );
 }
 
@@ -1125,9 +1145,9 @@ function JobResults() {
                                                 /> */}
                                                 <MinMaxPlot jobResults={filteredJobResults ? filteredJobResults : jobResults} />
                                             </Collapse.Panel>
-                                            {/* <Collapse.Panel header="Parallel Plot" key="3" extra={genExtra("result_parallel_plot")}>
+                                            <Collapse.Panel header="Parallel Plot" key="3" extra={genExtra("result_parallel_plot")}>
                                                 <ParallelPlot jobResults={filteredJobResults ? filteredJobResults : jobResults} />
-                                            </Collapse.Panel> */}
+                                            </Collapse.Panel>
                                             <Collapse.Panel header="Score Plot" key="4" extra={genExtra("result_score_plot")}>
                                                 <ScorePlot
                                                     jobResults={filteredJobResults ? filteredJobResults : jobResults}
