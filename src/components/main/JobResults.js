@@ -573,7 +573,7 @@ function MinMaxPlot({ jobResults }) {
             },
             percentage: {
                 title: {
-                    text: "Gen file Percentage (%)",
+                    text: "Gen File Count Ratio",
                 }
             }
         },
