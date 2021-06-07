@@ -21,7 +21,7 @@ import {
     Alert,
     notification,
 } from "antd";
-import { Column, Scatter, Line } from "@ant-design/charts";
+import { Column, Scatter, DualAxes } from "@ant-design/charts";
 import { AuthContext } from "../../Contexts";
 import Iframe from "react-iframe";
 // import { ReactComponent as Download } from "../../assets/download.svg";
@@ -481,7 +481,7 @@ function MinMaxPlot({ jobResults }) {
         if (result.survivalGeneration) {
             for (let i = result.generation; i <= result.survivalGeneration; i++) {
                 if (!survivalGenerationData[i]) { survivalGenerationData[i] = []; }
-                survivalGenerationData[i].push(result.score)
+                survivalGenerationData[i].push(result)
             }
         }
     });
@@ -489,35 +489,48 @@ function MinMaxPlot({ jobResults }) {
     delete survivalGenerationData[1];
 
     let minY = Infinity, maxY = - Infinity;
-    const plotData = [];
+    const scoreData = [];
+    const percentageData = [];
     Object.keys(survivalGenerationData).map(generation => {
         let minVal = Infinity, maxVal = - Infinity, sum = 0;
-        const count = survivalGenerationData[generation].length
-        survivalGenerationData[generation].forEach(score => {
-            minVal = Math.min(minVal, score);
-            maxVal = Math.max(maxVal, score);
-            sum += score
+        const count = survivalGenerationData[generation].length;
+        const genCount = { __total__: 0 }
+        survivalGenerationData[generation].forEach(result => {
+            minVal = Math.min(minVal, result.score);
+            maxVal = Math.max(maxVal, result.score);
+            sum += result.score
+            if (!genCount[result.genUrl]) {
+                genCount[result.genUrl] = 0
+            }
+            genCount[result.genUrl] += 1;
+            genCount.__total__ += 1;
         })
         minY = Math.min(minVal, minY);
         maxY = Math.max(maxVal, maxY);
-        plotData.push({
+        scoreData.push({
             dataType: 'max',
             generation: generation,
             score: maxVal
         })
-        plotData.push({
+        scoreData.push({
             dataType: 'avg',
             generation: generation,
             score: sum / count
         })
-        plotData.push({
+        scoreData.push({
             dataType: 'min',
             generation: generation,
             score: minVal
         })
-
+        for (const key of Object.keys(genCount)) {
+            if (key === '__total__') {continue;}
+            percentageData.push({
+                dataType: key.split("/").pop(),
+                generation: generation,
+                percentage: ((genCount[key]/genCount.__total__) * 100)
+            })
+        }
     });
-    console.log(minY, maxY)
     const config = {
         title: {
             visible: true,
@@ -527,22 +540,45 @@ function MinMaxPlot({ jobResults }) {
             visible: true,
             text: "Score Progression over Generations",
         },
-        data: plotData,
+        data: [scoreData, percentageData],
         xField: "generation",
-        yField: "score",
-        seriesField: 'dataType',
-        color: ['#cb302d', '#e3ca8c', '#82d1de'],
+        yField: ["score", "percentage"],
+        // seriesField: 'dataType',
+        // color: ['#cb302d', '#e3ca8c', '#82d1de'],
         xAxis: {
             title: {
                 text: "Generation",
             }
         },
+        geometryOptions: [
+            {
+                geometry: 'line',
+                seriesField: 'dataType',
+            },
+            {
+                geometry: 'column',
+                isStack: true,
+                seriesField: 'dataType',
+                isPercent: true
+            },
+          ],
+      
         yAxis: {
-            min: Math.floor(minY),
-            max: Math.ceil(maxY),
+            score: {
+                min: Math.floor(minY),
+                max: Math.ceil(maxY),
+                title: {
+                    text: "Score",
+                }
+            },
+            percentage: {
+                title: {
+                    text: "Gen file Percentage (%)",
+                }
+            }
         },
     };
-    return <Line {...config} />;
+    return <DualAxes {...config} />;
 }
 
 function ProgressPlot({ jobSettings, jobResults }) {
