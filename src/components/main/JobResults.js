@@ -448,21 +448,32 @@ function ParallelPlot({ jobResults }) {
 }
 
 function MinMaxPlot({ jobResults }) {
-    const generationData = {};
+    // const generationData = {};
+    const survivalGenerationData = {};
     jobResults.forEach((result) => {
         if (!result.score) { return; }
-        if (!generationData[result.generation]) {
-            generationData[result.generation] = [result.score];
-        } else {
-            generationData[result.generation].push(result.score);
+
+        // if (!generationData[result.generation]) {
+        //     generationData[result.generation] = [result.score];
+        // } else {
+        //     generationData[result.generation].push(result.score);
+        // }
+        if (result.survivalGeneration) {
+            for (let i = result.generation; i <= result.survivalGeneration; i++) {
+                if (!survivalGenerationData[i]) { survivalGenerationData[i] = []; }
+                survivalGenerationData[i].push(result.score)
+            }
         }
     });
+    // console.log('survivalGenerationData', survivalGenerationData)
+    delete survivalGenerationData[1];
+
     let minY = Infinity, maxY = - Infinity;
     const plotData = [];
-    Object.keys(generationData).map(generation => {
+    Object.keys(survivalGenerationData).map(generation => {
         let minVal = Infinity, maxVal = - Infinity, sum = 0;
-        const count = generationData[generation].length
-        generationData[generation].forEach(score => {
+        const count = survivalGenerationData[generation].length
+        survivalGenerationData[generation].forEach(score => {
             minVal = Math.min(minVal, score);
             maxVal = Math.max(maxVal, score);
             sum += score
@@ -681,6 +692,12 @@ function ResultTable({ jobResults, contextUrl }) {
             sorter: (a, b) => a.generation - b.generation,
         },
         {
+            title: "Last Survived Generation",
+            dataIndex: "survivalGeneration",
+            key: "survivalGeneration",
+            sorter: (a, b) => a.survivalGeneration - b.survivalGeneration,
+        },
+        {
             title: "Live",
             dataIndex: "live",
             key: "live",
@@ -748,6 +765,7 @@ function ResultTable({ jobResults, contextUrl }) {
             genFile: entry.genUrl.split("/").pop(),
             live: entry.live ? "True" : "False",
             generation: entry.generation,
+            survivalGeneration: entry.survivalGeneration? entry.survivalGeneration:0,
             params: paramsString,
             score: entry.score,
             rowClass: entry.errorMessage ? "error-row" : "default-row",
@@ -777,7 +795,7 @@ function ResultTable({ jobResults, contextUrl }) {
             rowKey="genID"
             rowClassName={(record, index) => record.rowClass}
             size="small"
-            scroll={{ x: 1000 }}
+            scroll={{ x: 1500 }}
             sticky
         />
     );
