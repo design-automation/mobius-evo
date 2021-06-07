@@ -34,6 +34,7 @@ type GenEvalParam @model @auth(rules: [{ allow: owner }]) @key(name: "byJobID", 
     JobID: ID!
     GenID: ID!
     generation: Int
+    survivalGeneration: Int
     genUrl: String
     evalUrl: String
     evalResult: String

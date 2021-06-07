@@ -368,6 +368,7 @@ function SettingsForm({currentStateManage}) {
                     JobID: jobID.toString(),
                     GenID: startingGenID.toString(),
                     generation: 1,
+                    survivalGeneration: null,
                     genUrl: genUrls[genKey],
                     evalUrl: jobSettings.evalUrl,
                     evalResult: null,

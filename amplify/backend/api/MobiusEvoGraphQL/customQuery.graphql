@@ -10,6 +10,7 @@ query generationsByJobIDcustom(
         id
         JobID
         GenID
+        survivalGeneration
         evalResult
         live
         params
