@@ -30,7 +30,7 @@ import { ResumeForm } from "./JobResults_resume.js";
 import Help from "./utils/Help";
 import { getS3Public } from "../../amplify-apis/userFiles";
 import { ConsoleSqlOutlined, QuestionCircleOutlined } from "@ant-design/icons";
-import {XYPlot, DecorativeAxis, LineSeries, DiscreteColorLegend, XAxis} from 'react-vis';
+import { XYPlot, DecorativeAxis, LineSeries, DiscreteColorLegend, XAxis } from "react-vis";
 
 import "./JobResults.css";
 
@@ -88,7 +88,7 @@ function assembleModelText(data) {
     );
 }
 
-function notify(title, text, isWarn = false){
+function notify(title, text, isWarn = false) {
     if (isWarn) {
         notification.error({
             message: title,
@@ -100,7 +100,7 @@ function notify(title, text, isWarn = false){
         message: title,
         description: text,
     });
-};
+}
 
 async function getData(jobID, userID, setJobSettings, setJobResults, setIsLoading, callback, nextToken = null) {
     await API.graphql(
@@ -147,7 +147,7 @@ async function getData(jobID, userID, setJobSettings, setJobResults, setIsLoadin
         .then((queryResult) => {
             const jobData = queryResult.data.getJob;
             if (jobData && !jobData.mutation_sd) {
-                jobData.mutation_sd = 0.05
+                jobData.mutation_sd = 0.05;
             }
             setJobSettings(jobData);
             if (!jobData || jobData.jobStatus === "inprogress") {
@@ -358,112 +358,135 @@ function ParallelPlot({ jobResults }) {
     const [width, setWidth] = useState(window.innerWidth);
     const [hoveredNode, setHoveredNode] = useState(null);
     const [hiddenGen, setHiddenGen] = useState({});
+    const [legendItemList, setLegendItemList] = useState(null);
+
     useEffect(() => {
         function handleResize() {
-            setWidth(window.innerWidth)
+            setWidth(window.innerWidth);
         }
-        window.addEventListener('resize', handleResize)
-    })
-    const colors_pallete = ["#A16F47", "#B400C2", "#683F8F", "#09AABD", "#3C9E7F", 
-                            "#B81E00", "#AB4B5D", "#0000A6", "#4169A6", "#0BB524"];
+        window.addEventListener("resize", handleResize);
+    });
+
+    function toggleHidden(selLegend) {
+        if (hiddenGen[selLegend.title]) {
+            hiddenGen[selLegend.title] = false;
+        } else {
+            hiddenGen[selLegend.title] = true;
+        }
+        setHiddenGen(hiddenGen);
+        if (hoveredNode !== false) {
+            setHoveredNode(false);
+        } else {
+            setHoveredNode(null);
+        }
+        const itemList = legendItemList? legendItemList:legendItems;
+        for (const item of itemList) {
+            if (selLegend.title === item.title) {
+                item.disabled = !item.disabled;
+                setLegendItemList(itemList);
+                return;
+            }
+        }
+    }
+
+    const legendItems = [];
+    const colors_pallete = ["#A16F47", "#B400C2", "#683F8F", "#09AABD", "#3C9E7F", "#B81E00", "#AB4B5D", "#0000A6", "#4169A6", "#0BB524"];
     const colors = {};
 
-    const plotData = []
+    const plotData = [];
     const domain = {
-        score: {min: Infinity, max: -Infinity}
+        score: { min: Infinity, max: -Infinity },
     };
-    const legendItems = [];
     jobResults.forEach((result) => {
-        if (!result.score) { return; }
+        if (!result.score) {
+            return;
+        }
         const parameters = JSON.parse(result.params);
-        Object.keys(parameters).forEach(paramKey => {
-            if (!domain[paramKey]) { domain[paramKey] = {min: parameters[paramKey], max: parameters[paramKey]}; }
+        Object.keys(parameters).forEach((paramKey) => {
+            if (!domain[paramKey]) {
+                domain[paramKey] = { min: parameters[paramKey], max: parameters[paramKey] };
+            }
             domain[paramKey].min = Math.min(domain[paramKey].min, parameters[paramKey]);
             domain[paramKey].max = Math.max(domain[paramKey].max, parameters[paramKey]);
-            domain[paramKey].range = (domain[paramKey].max - domain[paramKey].min);
+            domain[paramKey].range = domain[paramKey].max - domain[paramKey].min;
         });
         domain.score.min = Math.min(domain.score.min, result.score);
         domain.score.max = Math.max(domain.score.max, result.score);
-        domain.score.range = (domain.score.max - domain.score.min);
-
+        domain.score.range = domain.score.max - domain.score.min;
     });
     jobResults.forEach((result) => {
-        if (!result.score) { return; }
+        if (!result.score) {
+            return;
+        }
         const parameters = JSON.parse(result.params);
-        const resultData = []
+        const resultData = [];
         const genFile = result.genUrl.split("/").pop() + " - " + (result.live ? "live" : "dead");
         if (!colors[genFile]) {
             colors[genFile] = colors_pallete.pop();
             legendItems.push({
-                title: genFile, 
+                title: genFile,
                 color: colors[genFile]
-            })
+            });
         }
-        Object.keys(parameters).forEach(paramKey => {
+        Object.keys(parameters).forEach((paramKey) => {
             resultData.push({
                 y: (parameters[paramKey] - domain[paramKey].min) / domain[paramKey].range,
-                x: paramKey
+                x: paramKey,
             });
         });
         resultData.push({
             y: (result.score - domain.score.min) / domain.score.range,
-            x: "score"
+            x: "score",
         });
         plotData.push({
             id: result.GenID,
             data: resultData,
-            color: colors[genFile]
+            color: colors[genFile],
+            genFile: genFile
         });
     });
-    const MARGIN = {
-        left: 10,
-        right: 10,
-        top: 10,
-        bottom: 10
-    };
     return (
-    <>
-        <DiscreteColorLegend
-            items = {legendItems}
-            orientation='horizontal'
-            strokeWidth={2}
-        ></DiscreteColorLegend>
-        <XYPlot
-            width={(width - 100)}
-            height={(width/2 - 200)}
-            xType="ordinal"
-            // margin={MARGIN}
-            onMouseLeave={() => setHoveredNode(null)}
-        >
-            <XAxis/>
-            {plotData.map((series, index) => {
-            return <LineSeries data={series.data} key={`series-${index}`} color={series.color} 
-            onSeriesMouseOver={_ => setHoveredNode(series)}
-            strokeWidth={1}
-            />;
-            })}
-            {hoveredNode?<LineSeries data={hoveredNode.data} key={`series-hovered-border`}
-            color="#ff"
-            strokeWidth={7}
-            />: null}
-            {hoveredNode?<LineSeries data={hoveredNode.data} key={`series-hovered-fill`}
-            color={hoveredNode.color}
-            strokeWidth={4}
-            >
-            </LineSeries>: null}
-            {plotData[0].data.map((cell, index) => {
-            return (
-                <DecorativeAxis
-                key={`${index}-axis`}
-                axisStart={{x: cell.x, y: 0}}
-                axisEnd={{x: cell.x, y: 1}}
-                axisDomain={[domain[cell.x].min, domain[cell.x].max]}
-                />
-            );
-            })}
-
-        </XYPlot>
-    </>
+        <>
+            <DiscreteColorLegend items={legendItemList?legendItemList:legendItems} orientation="horizontal"
+                onItemClick={toggleHidden}></DiscreteColorLegend>
+            <XYPlot width={width - 100} height={width / 2 - 200} xType="ordinal" onMouseLeave={() => setHoveredNode(null)}>
+                <XAxis />
+                {plotData.map((series, index) => {
+                    if (hiddenGen[series.genFile]) {
+                        return null;
+                    }
+                    return (
+                        <LineSeries
+                            data={series.data}
+                            key={`series-${index}`}
+                            color={series.color}
+                            onSeriesMouseOver={(e) => {
+                                console.log(e);
+                                setHoveredNode(series);
+                            }}
+                            strokeWidth={1}
+                        />
+                    );
+                })}
+                {hoveredNode ? <LineSeries data={hoveredNode.data} key={`series-hovered-border`} color="#ff" strokeWidth={7} /> : null}
+                {hoveredNode ? (
+                    <LineSeries data={hoveredNode.data} key={`series-hovered-fill`} color={hoveredNode.color} strokeWidth={4}></LineSeries>
+                ) : null}
+                {plotData[0].data.map((cell, index) => {
+                    return (
+                        <DecorativeAxis
+                            key={`${index}-axis`}
+                            axisStart={{ x: cell.x, y: 0 }}
+                            axisEnd={{ x: cell.x, y: 1 }}
+                            axisDomain={[domain[cell.x].min, domain[cell.x].max]}
+                            style={{
+                                text: { color: "#ff" },
+                            }}
+                        />
+                    );
+                })}
+            </XYPlot>
+        </>
     );
 }
 
@@ -471,7 +494,9 @@ function MinMaxPlot({ jobResults }) {
     // const generationData = {};
     const survivalGenerationData = {};
     jobResults.forEach((result) => {
-        if (!result.score) { return; }
+        if (!result.score) {
+            return;
+        }
 
         // if (!generationData[result.generation]) {
         //     generationData[result.generation] = [result.score];
@@ -480,55 +505,62 @@ function MinMaxPlot({ jobResults }) {
         // }
         if (result.survivalGeneration) {
             for (let i = result.generation; i <= result.survivalGeneration; i++) {
-                if (!survivalGenerationData[i]) { survivalGenerationData[i] = []; }
-                survivalGenerationData[i].push(result)
+                if (!survivalGenerationData[i]) {
+                    survivalGenerationData[i] = [];
+                }
+                survivalGenerationData[i].push(result);
             }
         }
     });
     // console.log('survivalGenerationData', survivalGenerationData)
     delete survivalGenerationData[1];
 
-    let minY = Infinity, maxY = - Infinity;
+    let minY = Infinity,
+        maxY = -Infinity;
     const scoreData = [];
     const percentageData = [];
-    Object.keys(survivalGenerationData).map(generation => {
-        let minVal = Infinity, maxVal = - Infinity, sum = 0;
+    Object.keys(survivalGenerationData).map((generation) => {
+        let minVal = Infinity,
+            maxVal = -Infinity,
+            sum = 0;
         const count = survivalGenerationData[generation].length;
-        const genCount = { __total__: 0 }
-        survivalGenerationData[generation].forEach(result => {
+        const genCount = { __total__: 0 };
+        survivalGenerationData[generation].forEach((result) => {
             minVal = Math.min(minVal, result.score);
             maxVal = Math.max(maxVal, result.score);
-            sum += result.score
+            sum += result.score;
             if (!genCount[result.genUrl]) {
-                genCount[result.genUrl] = 0
+                genCount[result.genUrl] = 0;
             }
             genCount[result.genUrl] += 1;
             genCount.__total__ += 1;
-        })
+        });
         minY = Math.min(minVal, minY);
         maxY = Math.max(maxVal, maxY);
         scoreData.push({
-            dataType: 'max',
+            dataType: "max",
             generation: generation,
-            score: maxVal
-        })
+            score: maxVal,
+        });
         scoreData.push({
-            dataType: 'avg',
+            dataType: "avg",
             generation: generation,
-            score: sum / count
-        })
+            score: sum / count,
+        });
         scoreData.push({
-            dataType: 'min',
+            dataType: "min",
             generation: generation,
-            score: minVal
-        })
+            score: minVal,
+        });
         for (const key of Object.keys(genCount)) {
-            if (key === '__total__') {continue;}
+            if (key === "__total__") {
+                continue;
+            }
             percentageData.push({
                 dataType: key.split("/").pop(),
                 generation: generation,
-                percentage: ((genCount[key]/genCount.__total__) * 100)
-            })
+                percentage: (genCount[key] / genCount.__total__) * 100,
+            });
         }
     });
     const config = {
@@ -548,34 +580,34 @@ function MinMaxPlot({ jobResults }) {
         xAxis: {
             title: {
                 text: "Generation",
-            }
+            },
         },
         geometryOptions: [
             {
-                geometry: 'line',
-                seriesField: 'dataType',
+                geometry: "line",
+                seriesField: "dataType",
             },
             {
-                geometry: 'column',
+                geometry: "column",
                 isStack: true,
-                seriesField: 'dataType',
-                isPercent: true
+                seriesField: "dataType",
+                isPercent: true,
             },
-          ],
-      
+        ],
+
         yAxis: {
             score: {
                 min: Math.floor(minY),
                 max: Math.ceil(maxY),
                 title: {
                     text: "Score",
-                }
+                },
             },
             percentage: {
                 title: {
                     text: "Gen File Count Ratio",
-                }
-            }
+                },
+            },
         },
     };
     return <DualAxes {...config} />;
@@ -584,7 +616,8 @@ function MinMaxPlot({ jobResults }) {
 function ProgressPlot({ jobSettings, jobResults }) {
     const plotData = JSON.parse(JSON.stringify(jobResults));
 
-    let minY = Infinity, maxY = - Infinity;
+    let minY = Infinity,
+        maxY = -Infinity;
     plotData.forEach((result) => {
         if (result.score) {
             minY = Math.min(minY, result.score);
@@ -605,7 +638,7 @@ function ProgressPlot({ jobSettings, jobResults }) {
         xAxis: {
             title: {
                 text: "Generation",
-            }
+            },
         },
         yAxis: {
             score: {
@@ -624,7 +657,7 @@ function ProgressPlot({ jobSettings, jobResults }) {
     return <Scatter {...config} />;
 }
 
-function ScorePlot({ jobResults}) {
+function ScorePlot({ jobResults }) {
     const plotData = JSON.parse(JSON.stringify(jobResults));
     let minY,
         maxY = 0;
@@ -657,8 +690,10 @@ function ScorePlot({ jobResults}) {
         },
         tooltip: {
             customContent: (title, data) => {
-                if (data.length === 0) { return ""; }
-                let img_url = ''
+                if (data.length === 0) {
+                    return "";
+                }
+                let img_url = "";
                 getS3Public(
                     data[0].data.owner + "/" + data[0].data.JobID + "/" + data[0].data.id + "_eval.png",
                     (url) => {
@@ -667,9 +702,11 @@ function ScorePlot({ jobResults}) {
                     () => {}
                 );
                 const params = JSON.parse(data[0].data.params);
-                const paramString = Object.keys(params).map(key => {
-                    return '<li style="margin-left: 20px;">' + key + ': ' + params[key] + '</li>'; 
-                }).join('\n')
+                const paramString = Object.keys(params)
+                    .map((key) => {
+                        return '<li style="margin-left: 20px;">' + key + ": " + params[key] + "</li>";
+                    })
+                    .join("\n");
                 return `<div style="padding: 10px 0px 10px 0px;">
                     <h3 style="margin-bottom: 15px;">${title}</h3>
                     <p>Status: ${data[0].data.live ? "live" : "dead"}</p>
@@ -680,8 +717,8 @@ function ScorePlot({ jobResults}) {
                     <br>
                     <img src="${img_url}" width="300" height="200" >
                 </div>`;
-            }
-        }
+            },
+        },
     };
     if (minY && maxY) {
         config.yAxis = {
@@ -710,7 +747,7 @@ function ScorePlot({ jobResults}) {
                     );
                     updateTextArea(assembleModelText(data));
                     if (evt.data && evt.data.data) {
-                        updateSelectedResult(evt.data.data.owner + "/" + evt.data.data.JobID + "/" + evt.data.data.id)
+                        updateSelectedResult(evt.data.data.owner + "/" + evt.data.data.JobID + "/" + evt.data.data.id);
                     }
                 });
             }}
@@ -779,7 +816,7 @@ function ResultTable({ jobResults, contextUrl }) {
                             document.getElementById("hiddenInput").value = genModel;
                             viewModel(genModel, [contextUrl]);
                             updateTextArea(allData.resultText);
-                            updateSelectedResult(genModel.split('/public/').pop().replace('.gi', ''))
+                            updateSelectedResult(genModel.split("/public/").pop().replace(".gi", ""));
                         }}
                     />
                 </div>
@@ -799,7 +836,7 @@ function ResultTable({ jobResults, contextUrl }) {
                             document.getElementById("hiddenInput").value = evalModel;
                             viewModel(evalModel, [contextUrl]);
                             updateTextArea(allData.resultText);
-                            updateSelectedResult(evalModel.split('/public/').pop().replace('_eval.gi', ''))
+                            updateSelectedResult(evalModel.split("/public/").pop().replace("_eval.gi", ""));
                         }}
                     />
                 </div>
@@ -821,7 +858,7 @@ function ResultTable({ jobResults, contextUrl }) {
             genFile: entry.genUrl.split("/").pop(),
             live: entry.live ? "True" : "False",
             generation: entry.generation,
-            survivalGeneration: entry.survivalGeneration? entry.survivalGeneration:0,
+            survivalGeneration: entry.survivalGeneration ? entry.survivalGeneration : 0,
             params: paramsString,
             score: entry.score,
             rowClass: entry.errorMessage ? "error-row" : "default-row",
@@ -901,10 +938,10 @@ function ErrorList({ jobSettings, jobResults }) {
     );
 }
 
-function ViewTextArea({contextURLState}) {
+function ViewTextArea({ contextURLState }) {
     const [modelText, setModelText] = useState("");
     const [selectedJobResult, setSelectedJobResult] = useState(null);
-    const {contextUrl, setContextUrl} = contextURLState;
+    const { contextUrl, setContextUrl } = contextURLState;
 
     function updateTextArea() {
         setModelText(document.getElementById("hiddenInputText").value);
@@ -938,7 +975,7 @@ function ViewTextArea({contextURLState}) {
             return t.blob().then((b) => {
                 const a = document.getElementById("hiddenLink");
                 a.href = URL.createObjectURL(b);
-                a.setAttribute("download", selectedJobResult.split('/').pop() + (isGen ? "_gen" : "_eval") + ".gi");
+                a.setAttribute("download", selectedJobResult.split("/").pop() + (isGen ? "_gen" : "_eval") + ".gi");
                 a.click();
             });
         });
@@ -960,35 +997,43 @@ function ViewTextArea({contextURLState}) {
         a.target = "_blank";
         a.click();
     }
-    return (<>
-        <Iframe url={MOBIUS_VIEWER_URL} width="100%" height="600px" id="mobius_viewer" />
-        <br></br>
-        <Space direction="horizontal" size="large" style={{ width: "100%" }} align="start">
-            <div className="hiddenElement">
-                <Button id="hiddenUpdateTextAreaButton" onClick={updateTextArea}>apply</Button>
-                <Button id="hiddenUpdateSelectedResultButton" onClick={updateSelectedResult}>apply</Button>
-                <textarea id="hiddenInputText"></textarea>
-    
-                <input id="hiddenInput"></input>
-                <input id="hiddenContextUrl"></input>
-                <Button id="hiddenButton" onClick={viewGIModel}>apply</Button>
+    return (
+        <>
+            <Iframe url={MOBIUS_VIEWER_URL} width="100%" height="600px" id="mobius_viewer" />
+            <br></br>
+            <Space direction="horizontal" size="large" style={{ width: "100%" }} align="start">
+                <div className="hiddenElement">
+                    <Button id="hiddenUpdateTextAreaButton" onClick={updateTextArea}>
+                        apply
+                    </Button>
+                    <Button id="hiddenUpdateSelectedResultButton" onClick={updateSelectedResult}>
+                        apply
+                    </Button>
+                    <textarea id="hiddenInputText"></textarea>
 
-                <a id="hiddenLink"></a>
-            </div>
-            <Input.TextArea className="textArea" value={modelText} autoSize={true}></Input.TextArea>
-            <Space direction="vertical">
-                <Space direction="horizontal">
-                    Context Url
-                    <Input id="contextUrlInput" defaultValue={contextUrl}></Input>
-                    <Button onClick={updateContextURL}>apply</Button>
+                    <input id="hiddenInput"></input>
+                    <input id="hiddenContextUrl"></input>
+                    <Button id="hiddenButton" onClick={viewGIModel}>
+                        apply
+                    </Button>
+
+                    <a id="hiddenLink"></a>
+                </div>
+                <Input.TextArea className="textArea" value={modelText} autoSize={true}></Input.TextArea>
+                <Space direction="vertical">
+                    <Space direction="horizontal">
+                        Context Url
+                        <Input id="contextUrlInput" defaultValue={contextUrl}></Input>
+                        <Button onClick={updateContextURL}>apply</Button>
+                    </Space>
+                    <Button onClick={() => downloadSelectedModel(true)}>Download Gen</Button>
+                    <Button onClick={() => downloadSelectedModel()}>Download Eval</Button>
+                    <Button onClick={() => openViewerInNewTab(true)}>Open Gen model In New Browser</Button>
+                    <Button onClick={() => openViewerInNewTab()}>Open Eval model In New Browser</Button>
                 </Space>
-                <Button onClick={() => downloadSelectedModel(true)}>Download Gen</Button>
-                <Button onClick={() => downloadSelectedModel()}>Download Eval</Button>
-                <Button onClick={() => openViewerInNewTab(true)}>Open Gen model In New Browser</Button>
-                <Button onClick={() => openViewerInNewTab()}>Open Eval model In New Browser</Button>
             </Space>
-        </Space>
-    </>)
+        </>
+    );
 }
 
 function JobResults() {
@@ -1007,7 +1052,6 @@ function JobResults() {
             .then()
             .catch((err) => console.log(err));
     }, [cognitoPayload]);
-
 
     const CancelJob = () => {
         function cancelJob() {
@@ -1090,31 +1134,31 @@ function JobResults() {
             dataIndex: "runStart",
             key: "runStart",
             defaultSortOrder: "descend",
-            fixed: 'left',
-            render: isoTime => new Date(isoTime).toLocaleString()
+            fixed: "left",
+            render: (isoTime) => new Date(isoTime).toLocaleString(),
         },
         {
             title: "End Time",
             dataIndex: "runEnd",
             key: "runEnd",
-            fixed: 'left',
-            render: isoTime => new Date(isoTime).toLocaleString()
+            fixed: "left",
+            render: (isoTime) => new Date(isoTime).toLocaleString(),
         },
         {
             title: "Run Duration",
             dataIndex: "runTime",
             key: "runTime",
-            fixed: 'left',
-            render: runDuration => {
-                const minutes = Math.floor(runDuration / 60)
+            fixed: "left",
+            render: (runDuration) => {
+                const minutes = Math.floor(runDuration / 60);
                 const seconds = Math.floor(runDuration - minutes * 60);
                 if (minutes === 0) {
-                    return seconds + ' secs';
+                    return seconds + " secs";
                 }
                 if (minutes === 1) {
-                    return '1 min ' + seconds + ' secs';
+                    return "1 min " + seconds + " secs";
                 }
-                return minutes + ' mins ' + seconds + ' secs';
+                return minutes + " mins " + seconds + " secs";
             },
         },
         {
@@ -1126,7 +1170,7 @@ function JobResults() {
             title: "Gen File(s)",
             dataIndex: "genUrl",
             key: "genFile",
-            render: (urls) => urls.map(text => text.split("/").pop()).join(', '),
+            render: (urls) => urls.map((text) => text.split("/").pop()).join(", "),
         },
         {
             title: "Eval File",
@@ -1135,7 +1179,7 @@ function JobResults() {
             render: (text) => text.split("/").pop(),
         },
         ...expandedSettings.map((dataKey) => ({
-            title: dataKey.replace(/_/g, ' '),
+            title: dataKey.replace(/_/g, " "),
             dataIndex: dataKey.toLowerCase(),
             key: dataKey.toLowerCase(),
         })),
@@ -1143,25 +1187,24 @@ function JobResults() {
             title: "Mutation Standard Deviation",
             dataIndex: "mutation_sd",
             key: "mutation_sd",
-        }
+        },
     ];
     let pastSettingsData = [];
     if (jobSettings) {
         pastSettingsData = JSON.parse(jobSettings.history);
     }
 
-
     return (
         <Space direction="vertical" size="large" style={{ width: "inherit" }}>
             <br></br>
             <Spin spinning={isLoading}>
-            {jobSettings ? (
-                <>
-                    <Row>
-                        <h1>Search: {jobSettings.description}</h1>
-                    </Row>
-                    <Tabs defaultActiveKey="1" size="large">
-                        <TabPane tab="Results" key="1">
+                {jobSettings ? (
+                    <>
+                        <Row>
+                            <h1>Search: {jobSettings.description}</h1>
+                        </Row>
+                        <Tabs defaultActiveKey="1" size="large">
+                            <TabPane tab="Results" key="1">
                                 {!isLoading ? (
                                     <Space direction="vertical" size="large" style={{ width: "100%" }}>
                                         <ErrorList jobResults={jobResults} jobSettings={jobSettings}></ErrorList>
@@ -1185,14 +1228,10 @@ function JobResults() {
                                                 <ParallelPlot jobResults={filteredJobResults ? filteredJobResults : jobResults} />
                                             </Collapse.Panel>
                                             <Collapse.Panel header="Score Plot" key="4" extra={genExtra("result_score_plot")}>
-                                                <ScorePlot
-                                                    jobResults={filteredJobResults ? filteredJobResults : jobResults}
-                                                />
+                                                <ScorePlot jobResults={filteredJobResults ? filteredJobResults : jobResults} />
                                             </Collapse.Panel>
                                             <Collapse.Panel header="Mobius Viewer" key="5" extra={genExtra("result_mobius_viewer")}>
-                                                <ViewTextArea
-                                                    contextURLState={{contextUrl, setContextUrl}}
-                                                ></ViewTextArea>
+                                                <ViewTextArea contextURLState={{ contextUrl, setContextUrl }}></ViewTextArea>
                                             </Collapse.Panel>
                                             <Collapse.Panel header="Result Table" key="6" extra={genExtra("result_result_table")}>
                                                 <ResultTable
@@ -1203,80 +1242,84 @@ function JobResults() {
                                         </Collapse>
                                     </Space>
                                 ) : null}
-                        </TabPane>
-                        <TabPane tab="Settings" key="2">
-                            <Space direction="vertical" size="large" style={{ width: "100%" }}>
-                                <Collapse defaultActiveKey={["1", "2"]}>
-                                    <Collapse.Panel header="Search Settings" key="1" extra={genExtra("settings_job_settings")}>
-                                        <Descriptions
-                                            bordered={true}
-                                            size="small"
-                                            column={1}
-                                            style={{
-                                                color: "rgba(0,0,0,0.5)",
-                                            }}
-                                        >
-                                            <Descriptions.Item label="ID" key="id">
-                                                {jobSettings.id}
-                                            </Descriptions.Item>
-                                            <Descriptions.Item label="Description" key="description">
-                                                {jobSettings.description}
-                                            </Descriptions.Item>
-                                            <Descriptions.Item label="Last Modified" key="updatedAt">
-                                                {new Date(jobSettings.updatedAt).toLocaleString()}
-                                            </Descriptions.Item>
-                                            <Descriptions.Item label="Gen File(s)" key="genFile">
-                                                {getDisplayUrlString(jobSettings.genUrl, true)}
-                                            </Descriptions.Item>
-                                            <Descriptions.Item label="Eval File(s)" key="evalFile">
-                                                {getDisplayUrlString(jobSettings.evalUrl)}
-                                            </Descriptions.Item>
-                                            {expandedSettings.map((dataKey) => (
-                                                <Descriptions.Item label={dataKey.replace(/_/g, ' ')} key={dataKey}>
-                                                    {jobSettings[dataKey.toLowerCase()]}
+                            </TabPane>
+                            <TabPane tab="Settings" key="2">
+                                <Space direction="vertical" size="large" style={{ width: "100%" }}>
+                                    <Collapse defaultActiveKey={["1", "2"]}>
+                                        <Collapse.Panel header="Search Settings" key="1" extra={genExtra("settings_job_settings")}>
+                                            <Descriptions
+                                                bordered={true}
+                                                size="small"
+                                                column={1}
+                                                style={{
+                                                    color: "rgba(0,0,0,0.5)",
+                                                }}
+                                            >
+                                                <Descriptions.Item label="ID" key="id">
+                                                    {jobSettings.id}
                                                 </Descriptions.Item>
-                                            ))}
-                                            <Descriptions.Item label="Mutation Standard Deviation" key='mutation_sd'>
-                                                {jobSettings.mutation_sd}
-                                            </Descriptions.Item>
-                                            {/* <Descriptions.Item label="expiration" key="expiration">
+                                                <Descriptions.Item label="Description" key="description">
+                                                    {jobSettings.description}
+                                                </Descriptions.Item>
+                                                <Descriptions.Item label="Last Modified" key="updatedAt">
+                                                    {new Date(jobSettings.updatedAt).toLocaleString()}
+                                                </Descriptions.Item>
+                                                <Descriptions.Item label="Gen File(s)" key="genFile">
+                                                    {getDisplayUrlString(jobSettings.genUrl, true)}
+                                                </Descriptions.Item>
+                                                <Descriptions.Item label="Eval File(s)" key="evalFile">
+                                                    {getDisplayUrlString(jobSettings.evalUrl)}
+                                                </Descriptions.Item>
+                                                {expandedSettings.map((dataKey) => (
+                                                    <Descriptions.Item label={dataKey.replace(/_/g, " ")} key={dataKey}>
+                                                        {jobSettings[dataKey.toLowerCase()]}
+                                                    </Descriptions.Item>
+                                                ))}
+                                                <Descriptions.Item label="Mutation Standard Deviation" key="mutation_sd">
+                                                    {jobSettings.mutation_sd}
+                                                </Descriptions.Item>
+                                                {/* <Descriptions.Item label="expiration" key="expiration">
                                                 {String(Number(jobSettings.expiration) / 86400) + ' day(s)'}
                                             </Descriptions.Item> */}
-                                        </Descriptions>
-                                    </Collapse.Panel>
-                                    <Collapse.Panel header="Generative Details" key="2" extra={genExtra("settings_gen_details")}>
-                                        <Table dataSource={genTableData} columns={genTableColumns} rowKey="genUrl"></Table>
-                                    </Collapse.Panel>
-                                    <Collapse.Panel header="Past Settings" key="3" extra={genExtra("settings_past_settings")}>
-                                        <Table dataSource={pastSettingsData} columns={pastSettingsColumns} rowKey="runStart"
-                                            scroll={{ x: 2000 }}
-                                            sticky></Table>
-                                    </Collapse.Panel>
-                                </Collapse>
-                            </Space>
-                        </TabPane>
-                        <TabPane tab="Resume" key="3">
-                            <Space direction="vertical" size="large" style={{ width: "100%" }}>
-                                {jobSettings && (jobSettings.jobStatus === "completed" || jobSettings.jobStatus === "cancelled") ? (
-                                    <ResumeForm
-                                        jobID={jobID}
-                                        jobSettingsState={{ jobSettings, setJobSettings }}
-                                        jobResultsState={{ jobResults, setJobResults }}
-                                        getData={getData}
-                                        setIsLoading={setIsLoading}
-                                    />
-                                ) : (
-                                    <></>
-                                )}
-                                {jobSettings && jobSettings.jobStatus === "inprogress" ? <CancelJob /> : <></>}
-                            </Space>
-                        </TabPane>
-                    </Tabs>
-                    <br />
-                    <br />
-                </>
-            ) : null}
-        </Spin>
+                                            </Descriptions>
+                                        </Collapse.Panel>
+                                        <Collapse.Panel header="Generative Details" key="2" extra={genExtra("settings_gen_details")}>
+                                            <Table dataSource={genTableData} columns={genTableColumns} rowKey="genUrl"></Table>
+                                        </Collapse.Panel>
+                                        <Collapse.Panel header="Past Settings" key="3" extra={genExtra("settings_past_settings")}>
+                                            <Table
+                                                dataSource={pastSettingsData}
+                                                columns={pastSettingsColumns}
+                                                rowKey="runStart"
+                                                scroll={{ x: 2000 }}
+                                                sticky
+                                            ></Table>
+                                        </Collapse.Panel>
+                                    </Collapse>
+                                </Space>
+                            </TabPane>
+                            <TabPane tab="Resume" key="3">
+                                <Space direction="vertical" size="large" style={{ width: "100%" }}>
+                                    {jobSettings && (jobSettings.jobStatus === "completed" || jobSettings.jobStatus === "cancelled") ? (
+                                        <ResumeForm
+                                            jobID={jobID}
+                                            jobSettingsState={{ jobSettings, setJobSettings }}
+                                            jobResultsState={{ jobResults, setJobResults }}
+                                            getData={getData}
+                                            setIsLoading={setIsLoading}
+                                        />
+                                    ) : (
+                                        <></>
+                                    )}
+                                    {jobSettings && jobSettings.jobStatus === "inprogress" ? <CancelJob /> : <></>}
+                                </Space>
+                            </TabPane>
+                        </Tabs>
+                        <br />
+                        <br />
+                    </>
+                ) : null}
+            </Spin>
         </Space>
     );
 }
