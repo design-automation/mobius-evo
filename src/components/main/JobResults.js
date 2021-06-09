@@ -637,7 +637,7 @@ function ParallelPlot({ jobResults }) {
 
 function MinMaxPlot({ jobResults }) {
     // const generationData = {};
-    const survivalGenerationData = {1: []};
+    const survivalGenerationData = {};
     jobResults.forEach((result) => {
         if (!result.score) {
             return;
