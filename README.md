@@ -11,11 +11,11 @@ Before you start, you will require:
 
 ### Amazon AWS Cloud Computing
 With your AWS account (May 2021):
-* you get 25GB of free storage on Dynamo DB (does not expire),
-* you get the first 1 million Lambda function executions per month for free (does not expire), and
+* you get a free DynamoDB quota every month: 25GB of free storage,
+* you get a free Lambda quota every month: 1 million function invocations and 3.2 million seconds (37 days) of computing time, and
 * for the the first 12 months after opening your account, you get 5GB of free storage on S3.
 
-When you are running Mobius Evolver search that has a total of 1000 designs, then it will result in 2001 Lambda executions.  This means that you can run 499 of such searches every month without incurring any Lambda costs. You may still incur some storage costs depending on how long you save the results, but these costs are very low. (May 2021, S3 storage cost is $0.023 / GB).
+This means that you can run large numbers such searches every month without incurring any Lambda costs. You may still incur some storage costs depending on how long you save the results, but these costs are low. (May 2021, S3 storage cost is $0.023 / GB).
 
 * For more information on the AWS free tier, see [https://aws.amazon.com/free/](https://aws.amazon.com/free/)
 * For more information of AWS S3 storage costs, see [https://aws.amazon.com/s3/pricing/](https://aws.amazon.com/s3/pricing/)
