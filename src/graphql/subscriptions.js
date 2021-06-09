@@ -83,6 +83,7 @@ export const onCreateGenEvalParam = /* GraphQL */ `
       JobID
       GenID
       generation
+      survivalGeneration
       genUrl
       evalUrl
       evalResult
@@ -104,6 +105,7 @@ export const onUpdateGenEvalParam = /* GraphQL */ `
       JobID
       GenID
       generation
+      survivalGeneration
       genUrl
       evalUrl
       evalResult
@@ -125,6 +127,7 @@ export const onDeleteGenEvalParam = /* GraphQL */ `
       JobID
       GenID
       generation
+      survivalGeneration
       genUrl
       evalUrl
       evalResult

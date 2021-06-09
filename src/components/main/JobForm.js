@@ -37,8 +37,8 @@ const testDefault = {
     tournament_size: 10,
     mutation_sd: 0.05,
     expiration_days: 30,
-    genFile_random_generated: 40,
-    genFile_total_items: 40,
+    genFile_random_generated: 20,
+    genFile_total_items: 20,
 };
 const notify = (title, text, isWarn = false) => {
     if (isWarn) {
@@ -54,7 +54,7 @@ const notify = (title, text, isWarn = false) => {
     });
 };
 
-function FileSelectionModal({ isModalVisibleState, genFilesState, setEvalFile, replacedUrl, replaceEvalCheck }) {
+function FileSelectionModal({form, isModalVisibleState, genFilesState, setEvalFile, replacedUrl, replaceEvalCheck }) {
     const [s3Files, setS3Files] = useState([]);
     const [uploadedFiles, setUploadedFiles] = useState([]);
     const [isTableLoading, setIsTableLoading] = useState(true);
@@ -72,6 +72,7 @@ function FileSelectionModal({ isModalVisibleState, genFilesState, setEvalFile, r
     };
     const handleGenOk = async () => {
         let okCheck = false;
+        const formUpdate = {};
         for (const selectedRow of selectedRows) {
             const newFile = selectedRow.filename;
             let newUrl = "";
@@ -94,9 +95,12 @@ function FileSelectionModal({ isModalVisibleState, genFilesState, setEvalFile, r
                     okCheck = true;
                 }
             }
+            const inpID = "genFile_" + newFile;
+            formUpdate[inpID] = 0;
         }
         if (okCheck) {
             setGenFiles(genFiles);
+            form.setFieldsValue(formUpdate);
         }
         setSelectedRows([])
         setSelectedRowKeys([])
@@ -364,6 +368,7 @@ function SettingsForm({currentStateManage}) {
                     JobID: jobID.toString(),
                     GenID: startingGenID.toString(),
                     generation: 1,
+                    survivalGeneration: null,
                     genUrl: genUrls[genKey],
                     evalUrl: jobSettings.evalUrl,
                     evalResult: null,
@@ -428,7 +433,7 @@ function SettingsForm({currentStateManage}) {
 
     async function handleFinish() {
         const jobID = uuidv4();
-        const jobSettings = { ...form.getFieldsValue() };
+        const jobSettings = form.getFieldsValue();
         if (!genFiles || !evalFile) {
             notify("Unable to Start Job", "Please select at least one Gen File and one Eval File!", true);
             return;
@@ -475,7 +480,7 @@ function SettingsForm({currentStateManage}) {
     }
     function onNumChange(e) {
         setTimeout(() => {
-            const starting_population = Number(form.getFieldValue("population_size")) * 2;
+            const starting_population = Number(form.getFieldValue("population_size"));
             let totalCount = 0;
             genFiles.forEach((genUrl) => {
                 const genFile = genUrl.split("/").pop();
@@ -483,7 +488,7 @@ function SettingsForm({currentStateManage}) {
                 totalCount += Number(form.getFieldValue(inpID));
             });
             let countDiff = starting_population - totalCount;
-            const formUpdate = { genFile_total_items: starting_population };
+            const formUpdate = { genFile_total_items: totalCount < starting_population? starting_population: totalCount };
             if (countDiff < 0) { countDiff = 0; }
             formUpdate["genFile_random_generated"] = countDiff;
             form.setFieldsValue(formUpdate);
@@ -499,15 +504,14 @@ function SettingsForm({currentStateManage}) {
 
     function checkGenFile(_) {
         const formVal = form.getFieldsValue();
-        const totalVal = Number(formVal.genFile_total_items);
         let totalCount = 0;
         genFiles.forEach((genUrl) => {
             const genFile = genUrl.split("/").pop();
             const inpID = "genFile_" + genFile;
             totalCount += Number(formVal[inpID]);
         });
-        if (totalVal < totalCount) {
-            return Promise.reject(new Error('Total number of genFile parameters cannot be higher than Total Starting Items'));
+        if (totalCount > formVal.max_designs) {
+            return Promise.reject(new Error('Total number of genFile parameters cannot be higher than max number of designs'));
         }
         return Promise.resolve();
     }
@@ -651,7 +655,7 @@ function SettingsForm({currentStateManage}) {
                             );
                         })}
                         <Tooltip placement="topLeft" title={helpText.random_generated}>
-                            <Form.Item label="Random Generated" name="genFile_random_generated">
+                            <Form.Item label="Randomly Generated" name="genFile_random_generated">
                                 <InputNumber disabled />
                             </Form.Item>
                         </Tooltip>
@@ -669,6 +673,7 @@ function SettingsForm({currentStateManage}) {
             </Form>
         </Spin>
         <FileSelectionModal
+            form={form}
             isModalVisibleState={{ isModalVisible, setIsModalVisible }}
             genFilesState={{ genFiles, setGenFiles }}
             setEvalFile={setEvalFile}

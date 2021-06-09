@@ -23,13 +23,15 @@ const helpJSON = {
         result_page: {
             main: "Result Help",
             result_filter_form: "Filter Form Help",
-            result_progress_plot: "Progress Form Help",
+            result_progress_plot: "Progress Plot Help",
+            result_parallel_plot: "Parallel Plot Help",
             result_score_plot: "Score Plot Help",
             result_mobius_viewer: "Mobius Viewer Help",
             result_result_table: "Result Table Help",
 
             settings_job_settings: "Search Settings Help",
             settings_gen_details: "Generative Details Help",
+            settings_past_settings: "Previous Search Settings",
             resume_new_settings_1: "Resume Search Help",
             resume_gen_file: "Resume Generative Help",
             resume_eval_file: "Resume Evaluative Help",
@@ -140,7 +142,7 @@ Additional Initialisation Settings (preset).
 
 * __Total Starting Items__: 2*population size (search settings).
 
-* __Random Generated__: 2*population size (search settings).
+* __Randomly Generated__: 2*population size (search settings).
 
                 `,
             },
@@ -176,6 +178,14 @@ Displays Evolution progress in a point plot. Each point represents a Design in t
 * __Legend__: Clicking on the legend of each plot will toggle its display on the plot.
 
                 `,
+            },
+            result_parallel_plot: {
+                title: "Parallel Plot",
+                text: `
+
+---
+
+`,
             },
             result_score_plot: {
                 title: "Score Plot",
@@ -251,6 +261,12 @@ Details on Generative Files
 * __Live Items__: Total number of Live Designs generated from Generation File
 
                 `,
+            },
+            settings_past_settings: {
+                title: "Previous Search Settings",
+                text: `
+Previous Search Settings
+`
             },
             resume_new_settings_1: {
                 title: "New Search Settings",
