@@ -655,8 +655,6 @@ function MinMaxPlot({ jobResults }) {
                 }
                 survivalGenerationData[i].push(result);
             }
-        } else if (result.generation === 1) {
-            survivalGenerationData[1].push(result);
         }
     });
     // console.log('survivalGenerationData', survivalGenerationData)
