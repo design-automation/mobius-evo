@@ -359,7 +359,7 @@ function ParallelPlot({ jobResults }) {
     const [hoveredNode, setHoveredNode] = useState(null);
     const [hiddenGen, setHiddenGen] = useState({});
     const [legendItemList, setLegendItemList] = useState(null);
-
+    
     useEffect(() => {
         function handleResize() {
             setWidth(window.innerWidth);
@@ -397,6 +397,7 @@ function ParallelPlot({ jobResults }) {
     const domain = {
         score: { min: Infinity, max: -Infinity },
     };
+    const decorativeAxisLabels = [];
     jobResults.forEach((result) => {
         if (!result.score) {
             return;
@@ -405,6 +406,7 @@ function ParallelPlot({ jobResults }) {
         Object.keys(parameters).forEach((paramKey) => {
             if (!domain[paramKey]) {
                 domain[paramKey] = { min: parameters[paramKey], max: parameters[paramKey] };
+                decorativeAxisLabels.push(paramKey);
             }
             domain[paramKey].min = Math.min(domain[paramKey].min, parameters[paramKey]);
             domain[paramKey].max = Math.max(domain[paramKey].max, parameters[paramKey]);
@@ -414,6 +416,18 @@ function ParallelPlot({ jobResults }) {
         domain.score.max = Math.max(domain.score.max, result.score);
         domain.score.range = domain.score.max - domain.score.min;
     });
+    decorativeAxisLabels.push('score')
+    plotData.push({
+        id: '_',
+        data: decorativeAxisLabels.map(label => {
+            return {
+                y: null,
+                x: label,
+            }
+        }),
+        color: '#ff',
+        genFile: ''
+    })
     jobResults.forEach((result) => {
         if (!result.score) {
             return;
@@ -428,7 +442,10 @@ function ParallelPlot({ jobResults }) {
                 color: colors[genFile]
             });
         }
-        Object.keys(parameters).forEach((paramKey) => {
+        decorativeAxisLabels.forEach((paramKey) => {
+            if (!parameters[paramKey] && parameters[paramKey] !== 0) {
+                return;
+            }
             resultData.push({
                 y: (parameters[paramKey] - domain[paramKey].min) / domain[paramKey].range,
                 x: paramKey,
@@ -450,7 +467,7 @@ function ParallelPlot({ jobResults }) {
             <DiscreteColorLegend items={legendItemList?legendItemList:legendItems} orientation="horizontal"
                 onItemClick={toggleHidden}></DiscreteColorLegend>
             <XYPlot width={width - 100} height={width / 2 - 200} xType="ordinal" onMouseLeave={() => setHoveredNode(null)}>
-                <XAxis />
+                <XAxis tickValues={decorativeAxisLabels}/>
                 {plotData.map((series, index) => {
                     if (hiddenGen[series.genFile]) {
                         return null;
@@ -472,13 +489,13 @@ function ParallelPlot({ jobResults }) {
                 {hoveredNode ? (
                     <LineSeries data={hoveredNode.data} key={`series-hovered-fill`} color={hoveredNode.color} strokeWidth={4}></LineSeries>
                 ) : null}
-                {plotData[0].data.map((cell, index) => {
+                {decorativeAxisLabels.map((cell, index) => {
                     return (
                         <DecorativeAxis
                             key={`${index}-axis`}
-                            axisStart={{ x: cell.x, y: 0 }}
-                            axisEnd={{ x: cell.x, y: 1 }}
-                            axisDomain={[domain[cell.x].min, domain[cell.x].max]}
+                            axisStart={{ x: cell, y: 0 }}
+                            axisEnd={{ x: cell, y: 1 }}
+                            axisDomain={[domain[cell].min, domain[cell].max]}
                             style={{
                                 text: { color: "#ff" },
                             }}
