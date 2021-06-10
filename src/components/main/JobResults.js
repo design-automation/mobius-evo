@@ -1335,8 +1335,12 @@ function JobResults() {
         },
     ];
     let pastSettingsData = [];
+    let numGen = 0
     if (jobSettings) {
         pastSettingsData = JSON.parse(jobSettings.history);
+        jobResults.forEach(r => {
+            numGen = Math.max(numGen, r.generation);
+        })
     }
 
     return (
@@ -1414,6 +1418,9 @@ function JobResults() {
                                                 </Descriptions.Item>
                                                 <Descriptions.Item label="Eval File(s)" key="evalFile">
                                                     {getDisplayUrlString(jobSettings.evalUrl)}
+                                                </Descriptions.Item>
+                                                <Descriptions.Item label="Number of Generations" key="num_gen">
+                                                    {numGen}
                                                 </Descriptions.Item>
                                                 {expandedSettings.map((dataKey) => (
                                                     <Descriptions.Item label={dataKey.replace(/_/g, " ")} key={dataKey}>

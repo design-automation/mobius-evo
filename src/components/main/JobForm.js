@@ -32,6 +32,7 @@ import helpJSON from "../../assets/help/help_text_json";
 
 const testDefault = {
     description: `new test`,
+    num_gen: 5,
     max_designs: 100,
     population_size: 20,
     tournament_size: 10,
@@ -475,10 +476,18 @@ function SettingsForm({currentStateManage}) {
     }
     const formInitialValues = testDefault;
 
-    function onPopChange(e) {
+    function onNumGenChange() {
+        setTimeout(() => {
+            const fieldValues = form.getFieldsValue()
+            form.setFieldsValue({
+                max_designs: fieldValues.genFile_total_items + (fieldValues.num_gen - 1) * fieldValues.population_size
+            })
+        },0)
+    }
+    function onPopChange() {
         onNumChange(null);
     }
-    function onNumChange(e) {
+    function onNumChange() {
         setTimeout(() => {
             const starting_population = Number(form.getFieldValue("population_size"));
             let totalCount = 0;
@@ -492,6 +501,8 @@ function SettingsForm({currentStateManage}) {
             if (countDiff < 0) { countDiff = 0; }
             formUpdate["genFile_random_generated"] = countDiff;
             form.setFieldsValue(formUpdate);
+
+            onNumGenChange();
         }, 0);
     }
     function checkTournament(_, value) {
@@ -607,9 +618,15 @@ function SettingsForm({currentStateManage}) {
                             </Form.Item>
                         </Tooltip>
 
+                        <Tooltip placement="topLeft" title={helpText.num_gen}>
+                            <Form.Item label="Number of Generations" name="num_gen" rules={rules}>
+                                <InputNumber min={1} onChange={onNumGenChange} />
+                            </Form.Item>
+                        </Tooltip>
+
                         <Tooltip placement="topLeft" title={helpText.max_designs}>
                             <Form.Item label="Number of Designs" name="max_designs" rules={rules}>
-                                <InputNumber min={1} />
+                                <InputNumber disabled/>
                             </Form.Item>
                         </Tooltip>
 

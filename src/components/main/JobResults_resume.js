@@ -574,12 +574,33 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
     function handleFinishFail() {
         notify('Unable to Resume Search', 'Please check for Errors in form!', true);
     }
-    function onNewDesignChange(e) {
+    function onNumGenChange() {
         setTimeout(() => {
-            const new_designs = Number(form.getFieldValue("new_designs"));
-            const formUpdate = { max_designs: jobSettings.max_designs + new_designs };
-            form.setFieldsValue(formUpdate);
-        }, 0);
+            const fieldValues = form.getFieldsValue()
+            let livePop = jobResults.filter(r => r.live).length;
+            let firstGenPop = fieldValues.genFile_total_items - livePop;
+
+            // total initial items number is smaller/equal to current live size => new first gen pop = new gen num * pop size
+            if (firstGenPop <= 0) {
+                firstGenPop = livePop;
+            }
+
+            let newDesigns = firstGenPop;
+            livePop += firstGenPop;
+
+            for (let i = 1; i < fieldValues.new_gens; i++) {
+                if (livePop > fieldValues.population_size) {
+                    livePop = fieldValues.population_size
+                }
+                newDesigns += livePop;
+                livePop += livePop;
+            }
+
+            form.setFieldsValue({
+                max_designs: jobResults.length + newDesigns,
+                new_designs: newDesigns
+            })
+        },0)
     }
     function onPopChange(e) {
         onNumChange(null);
@@ -594,6 +615,7 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
             });
             const formUpdate = { genFile_total_items: totalCount };
             form.setFieldsValue(formUpdate);
+            onNumGenChange();
         }, 0);
     }
     function checkTournament(_, value) {
@@ -617,8 +639,9 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
         return Promise.resolve();
     }
     const formInitialValues = {
-        max_designs: jobSettings.max_designs * 2,
-        new_designs: jobSettings.max_designs,
+        max_designs: jobResults.length + jobSettings.population_size * 5,
+        new_gens: 5,
+        new_designs: jobSettings.population_size * 5,
         population_size: jobSettings.population_size,
         tournament_size: jobSettings.tournament_size,
         mutation_sd: jobSettings.mutation_sd,
@@ -782,15 +805,21 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
             >
                 <Collapse defaultActiveKey={["1", "2", "3", "4"]}>
                     <Collapse.Panel header="New Search Settings" key="1" extra={genExtra("resume_new_settings_1")}>
-                        <Tooltip placement="topLeft" title={helpText.max_designs}>
-                            <Form.Item label="New Max Designs" name="max_designs" rules={rules}>
-                                <InputNumber disabled />
+                        <Tooltip placement="topLeft" title={helpText.new_gens}>
+                            <Form.Item label="Number of new Generations" name="new_gens" rules={rules}>
+                                <InputNumber min={0} onChange={onNumGenChange} />
                             </Form.Item>
                         </Tooltip>
 
                         <Tooltip placement="topLeft" title={helpText.new_designs}>
                             <Form.Item label="Number of New Designs" name="new_designs" rules={rules}>
-                                <InputNumber min={0} onChange={onNewDesignChange} />
+                                <InputNumber min={0} disabled/>
+                            </Form.Item>
+                        </Tooltip>
+
+                        <Tooltip placement="topLeft" title={helpText.max_designs}>
+                            <Form.Item label="New Max Designs" name="max_designs" rules={rules}>
+                                <InputNumber disabled />
                             </Form.Item>
                         </Tooltip>
 
