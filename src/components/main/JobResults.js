@@ -354,9 +354,68 @@ function FilterForm({ modelParamsState, jobResultsState, filteredJobResultsState
     ) : null;
 }
 
+function SingularParallelPlot({genFile, plotData, domain, decorativeAxisLabels, legendItems, width}) {
+    const [hoveredNode, setHoveredNode] = useState(null);
+    const [legends, setLegends] = useState(JSON.parse(JSON.stringify(legendItems)));
+    function onLegendClick(l) {
+        l.disabled = !l.disabled;
+        setLegends(legends)
+        if (hoveredNode === null) {
+            setHoveredNode(false);
+        } else {
+            setHoveredNode(null);
+        }
+    }
+    return (<>
+        <h4>{genFile}</h4>
+        <DiscreteColorLegend items={legends} orientation="horizontal" onItemClick={onLegendClick}></DiscreteColorLegend>
+        <XYPlot width={width - 100} height={width / 2 - 200} xType="ordinal" onMouseLeave={() => setHoveredNode(null)}>
+            <XAxis key={`xAxis-${genFile}`} tickValues={decorativeAxisLabels}/>
+            {plotData.map((series) => {
+                if (series.genFile !== genFile) { return null; }
+                for (const l of legends) {
+                    if (l.title === series.genStatus) {
+                        if (l.disabled) { return null; }
+                        break;
+                    }
+                }
+                return (
+                    <LineSeries
+                        data={series.data}
+                        key={`${series.id}`}
+                        color={series.color}
+                        onSeriesMouseOver={(e) => {
+                            setHoveredNode(series);
+                        }}
+                        strokeWidth={1}
+                    />
+                );
+            })}
+            {(hoveredNode && hoveredNode.genFile === genFile)? 
+                <LineSeries data={hoveredNode.data} key={`${hoveredNode.id}-hovered-border`} color="#ff" strokeWidth={7} /> : null}
+            {(hoveredNode && hoveredNode.genFile === genFile) ? (
+                <LineSeries data={hoveredNode.data} key={`${hoveredNode.id}-hovered-fill`} color={hoveredNode.color} strokeWidth={4}></LineSeries>
+            ) : null}
+            {decorativeAxisLabels.map((cell, index) => {
+                return (
+                    <DecorativeAxis
+                        key={`${genFile}-${index}-axis`}
+                        axisStart={{ x: cell, y: 0 }}
+                        axisEnd={{ x: cell, y: 1 }}
+                        axisDomain={[domain[cell].min, domain[cell].max]}
+                        style={{
+                            text: { color: "#ff" },
+                        }}
+                    />
+                );
+            })}
+        </XYPlot>
+        <br></br>
+        </>)
+}
+
 function ParallelPlot({ jobResults }) {
     const [width, setWidth] = useState(window.innerWidth);
-    const [hoveredNode, setHoveredNode] = useState(null);
     
     useEffect(() => {
         function handleResize() {
@@ -371,9 +430,7 @@ function ParallelPlot({ jobResults }) {
 
     const plotData = [];
     const genFiles = {};
-    const domain = {
-        score: { min: Infinity, max: -Infinity },
-    };
+    const domain = {};
     const decorativeAxisLabels = {};
     jobResults.forEach((result) => {
         if (!result.score) {
@@ -442,201 +499,15 @@ function ParallelPlot({ jobResults }) {
     });
     return (
         <>
-            {Object.keys(genFiles).sort().map(genFile => <>
-                <h4>{genFile}</h4>
-                <DiscreteColorLegend items={legendItems[genFile]} orientation="horizontal"></DiscreteColorLegend>
-                <XYPlot width={width - 100} height={width / 2 - 200} xType="ordinal" onMouseLeave={() => setHoveredNode(null)}>
-                    <XAxis key={`xAxis-${genFile}`} tickValues={decorativeAxisLabels[genFile]}/>
-                    {plotData.map((series) => {
-                        if (series.genFile !== genFile) { return null; }
-                        return (
-                            <LineSeries
-                                data={series.data}
-                                key={`${series.id}`}
-                                color={series.color}
-                                onSeriesMouseOver={(e) => {
-                                    console.log(e);
-                                    setHoveredNode(series);
-                                }}
-                                strokeWidth={1}
-                            />
-                        );
-                    })}
-                    {(hoveredNode && hoveredNode.genFile === genFile)? 
-                        <LineSeries data={hoveredNode.data} key={`${hoveredNode.id}-hovered-border`} color="#ff" strokeWidth={7} /> : null}
-                    {(hoveredNode && hoveredNode.genFile === genFile) ? (
-                        <LineSeries data={hoveredNode.data} key={`${hoveredNode.id}-hovered-fill`} color={hoveredNode.color} strokeWidth={4}></LineSeries>
-                    ) : null}
-                    {decorativeAxisLabels[genFile].map((cell, index) => {
-                        return (
-                            <DecorativeAxis
-                                key={`${genFile}-${index}-axis`}
-                                axisStart={{ x: cell, y: 0 }}
-                                axisEnd={{ x: cell, y: 1 }}
-                                axisDomain={[domain[genFile][cell].min, domain[genFile][cell].max]}
-                                style={{
-                                    text: { color: "#ff" },
-                                }}
-                            />
-                        );
-                    })}
-                </XYPlot>
-                <br></br>
-                </>
-            )}
-        </>
-    );
-}
-
-function ParallelPlot1({ jobResults }) {
-    const [width, setWidth] = useState(window.innerWidth);
-    const [hoveredNode, setHoveredNode] = useState(null);
-    const [hiddenGen, setHiddenGen] = useState({});
-    const [legendItemList, setLegendItemList] = useState(null);
-    
-    useEffect(() => {
-        function handleResize() {
-            setWidth(window.innerWidth);
-        }
-        window.addEventListener("resize", handleResize);
-    });
-
-    function toggleHidden(selLegend) {
-        if (hiddenGen[selLegend.title]) {
-            hiddenGen[selLegend.title] = false;
-        } else {
-            hiddenGen[selLegend.title] = true;
-        }
-        setHiddenGen(hiddenGen);
-        if (hoveredNode !== false) {
-            setHoveredNode(false);
-        } else {
-            setHoveredNode(null);
-        }
-        const itemList = legendItemList? legendItemList:legendItems;
-        for (const item of itemList) {
-            if (selLegend.title === item.title) {
-                item.disabled = !item.disabled;
-                setLegendItemList(itemList);
-                return;
-            }
-        }
-    }
-
-    const legendItems = [];
-    const colors_pallete = ["#A16F47", "#B400C2", "#683F8F", "#09AABD", "#3C9E7F", "#B81E00", "#AB4B5D", "#0000A6", "#4169A6", "#0BB524"];
-    const colors = {};
-
-    const plotData = [];
-    const domain = {
-        score: { min: Infinity, max: -Infinity },
-    };
-    const decorativeAxisLabels = [];
-    jobResults.forEach((result) => {
-        if (!result.score) {
-            return;
-        }
-        const parameters = JSON.parse(result.params);
-        Object.keys(parameters).forEach((paramKey) => {
-            if (!domain[paramKey]) {
-                domain[paramKey] = { min: parameters[paramKey], max: parameters[paramKey] };
-                decorativeAxisLabels.push(paramKey);
-            }
-            domain[paramKey].min = Math.min(domain[paramKey].min, parameters[paramKey]);
-            domain[paramKey].max = Math.max(domain[paramKey].max, parameters[paramKey]);
-            domain[paramKey].range = domain[paramKey].max - domain[paramKey].min;
-        });
-        domain.score.min = Math.min(domain.score.min, result.score);
-        domain.score.max = Math.max(domain.score.max, result.score);
-        domain.score.range = domain.score.max - domain.score.min;
-    });
-    decorativeAxisLabels.push('score')
-    plotData.push({
-        id: '_',
-        data: decorativeAxisLabels.map(label => {
-            return {
-                y: null,
-                x: label,
-            }
-        }),
-        color: '#ff',
-        genFile: ''
-    })
-    jobResults.forEach((result) => {
-        if (!result.score) {
-            return;
-        }
-        const parameters = JSON.parse(result.params);
-        const resultData = [];
-        const genFile = result.genUrl.split("/").pop() + " - " + (result.live ? "live" : "dead");
-        if (!colors[genFile]) {
-            colors[genFile] = colors_pallete.pop();
-            legendItems.push({
-                title: genFile,
-                color: colors[genFile]
-            });
-        }
-        decorativeAxisLabels.forEach((paramKey) => {
-            if (!parameters[paramKey] && parameters[paramKey] !== 0) {
-                return;
-            }
-            resultData.push({
-                y: (parameters[paramKey] - domain[paramKey].min) / domain[paramKey].range,
-                x: paramKey,
-            });
-        });
-        resultData.push({
-            y: (result.score - domain.score.min) / domain.score.range,
-            x: "score",
-        });
-        plotData.push({
-            id: result.GenID,
-            data: resultData,
-            color: colors[genFile],
-            genFile: genFile
-        });
-    });
-    return (
-        <>
-            <DiscreteColorLegend items={legendItemList?legendItemList:legendItems} orientation="horizontal"
-                onItemClick={toggleHidden}></DiscreteColorLegend>
-            <XYPlot width={width - 100} height={width / 2 - 200} xType="ordinal" onMouseLeave={() => setHoveredNode(null)}>
-                <XAxis tickValues={decorativeAxisLabels}/>
-                {plotData.map((series, index) => {
-                    if (hiddenGen[series.genFile]) {
-                        return null;
-                    }
-                    return (
-                        <LineSeries
-                            data={series.data}
-                            key={`series-${index}`}
-                            color={series.color}
-                            onSeriesMouseOver={(e) => {
-                                console.log(e);
-                                setHoveredNode(series);
-                            }}
-                            strokeWidth={1}
-                        />
-                    );
-                })}
-                {hoveredNode ? <LineSeries data={hoveredNode.data} key={`series-hovered-border`} color="#ff" strokeWidth={7} /> : null}
-                {hoveredNode ? (
-                    <LineSeries data={hoveredNode.data} key={`series-hovered-fill`} color={hoveredNode.color} strokeWidth={4}></LineSeries>
-                ) : null}
-                {decorativeAxisLabels.map((cell, index) => {
-                    return (
-                        <DecorativeAxis
-                            key={`${index}-axis`}
-                            axisStart={{ x: cell, y: 0 }}
-                            axisEnd={{ x: cell, y: 1 }}
-                            axisDomain={[domain[cell].min, domain[cell].max]}
-                            style={{
-                                text: { color: "#ff" },
-                            }}
-                        />
-                    );
-                })}
-            </XYPlot>
+            {Object.keys(genFiles).sort().map(genFile => <SingularParallelPlot
+                key={genFile}
+                genFile={genFile}
+                plotData={plotData}
+                domain={domain[genFile]}
+                decorativeAxisLabels={decorativeAxisLabels[genFile]}
+                legendItems={legendItems[genFile]}
+                width={width}
+            ></SingularParallelPlot>)}
         </>
     );
 }
