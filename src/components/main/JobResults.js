@@ -155,7 +155,7 @@ async function getData(jobID, userID, setJobSettings, setJobResults, setIsLoadin
                     // setIsLoading(true);
                     setJobResults([]);
                     getData(jobID, userID, setJobSettings, setJobResults, setIsLoading, callback);
-                }, 5000);
+                }, 10000);
             }
         })
         .catch((err) => {

@@ -79,6 +79,7 @@ function FileSelectionModal({form, isModalVisibleState, jobSettingsState, jobRes
                 setJobSettings(jobSettings);
                 let newID = jobResults.length;
                 const newJobs = [];
+                let newLiveCount = 0;
                 jobResults
                     .filter((result) => result.genUrl === replacedUrl && result.live === true)
                     .forEach((result) => {
@@ -125,6 +126,7 @@ function FileSelectionModal({form, isModalVisibleState, jobSettingsState, jobRes
                         result.live = false;
                         newJobs.push(newParam);
                         newID += 1;
+                        newLiveCount++;
                     });
                 allPromises.push(
                     API.graphql(
@@ -135,7 +137,8 @@ function FileSelectionModal({form, isModalVisibleState, jobSettingsState, jobRes
                         .then()
                         .catch((err) => console.log(err))
                 );
-                formUpdate["genFile_" + newFile] = 0
+                formUpdate["genFile_existing_" + newFile] = newLiveCount;
+                formUpdate["genFile_" + newFile] = 0;
                 setJobResults(jobResults.concat(newJobs));
             }
         }
@@ -527,11 +530,11 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
             newJobSettings.genUrl[genKey] = genUrl;
             return genKey;
         });
-        newJobSettings.genKeys.forEach((key) => {
-            newJobSettings["genFile_" + key] -= jobResults.filter(
-                (result) => result.live === true && result.genUrl === newJobSettings.genUrl[key]
-            ).length;
-        });
+        // newJobSettings.genKeys.forEach((key) => {
+        //     newJobSettings["genFile_" + key] -= jobResults.filter(
+        //         (result) => result.live === true && result.genUrl === newJobSettings.genUrl[key]
+        //     ).length;
+        // });
         newJobSettings.evalUrl = jobSettings.evalUrl;
         setIsLoading(true);
         await initParams(jobSettings.id, newJobSettings);
@@ -608,10 +611,10 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
     function onNumChange(e) {
         setTimeout(() => {
             let totalCount = 0;
+            const formVal = form.getFieldsValue();
             jobSettings.genUrl.forEach((genUrl) => {
                 const genFile = genUrl.split("/").pop();
-                const inpID = "genFile_" + genFile;
-                totalCount += Number(form.getFieldValue(inpID));
+                totalCount += Number(formVal["genFile_" + genFile]) + Number(formVal["genFile_existing_" + genFile]);
             });
             const formUpdate = { genFile_total_items: totalCount };
             form.setFieldsValue(formUpdate);
@@ -630,8 +633,7 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
         let totalCount = 0;
         jobSettings.genUrl.forEach((genUrl) => {
             const genFile = genUrl.split("/").pop();
-            const inpID = "genFile_" + genFile;
-            totalCount += Number(formVal[inpID]);
+            totalCount += Number(formVal["genFile_" + genFile]) + Number(formVal["genFile_existing_" + genFile]);
         });
         if ((totalCount- formInitialValues.initial_live_items) > formVal.new_designs) {
             return Promise.reject(new Error('Total number of new genFile parameters cannot be higher than max number of new designs'));
@@ -648,7 +650,6 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
 
         genFile_total_items: jobSettings.population_size,
         initial_live_items : 0
-        // genFile_mutate: 0,
     };
     if (jobSettings.jobStatus === "cancelled") {
         formInitialValues.max_designs = jobSettings.max_designs;
@@ -657,13 +658,14 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
     jobSettings.genUrl.forEach((url) => {
         const genFile = url.split("/").pop();
         formInitialValues["genFile_" + genFile] = 0;
+        formInitialValues["genFile_existing_" + genFile] = 0;
     });
     jobResults.forEach((result) => {
         if (!result.live) {
             return;
         }
         const genFile = result.genUrl.split("/").pop();
-        formInitialValues["genFile_" + genFile] += 1;
+        formInitialValues["genFile_existing_" + genFile] += 1;
         formInitialValues.initial_live_items += 1;
     });
 
@@ -857,23 +859,15 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
                         </Tooltip>
                         {jobSettings.genUrl.map((genUrl) => {
                             const genFile = genUrl.split("/").pop();
-                            return (
-                                <Form.Item label={genFile} name={"genFile_" + genFile} key={"genFile_" + genFile} rules={[...rules, {validator: checkGenFile}]}>
+                            return <div key={"genFile_" + genFile}>
+                                <Form.Item label={genFile + ' - existing'} name={"genFile_existing_" + genFile} key={"genFile_existing_" + genFile}>
+                                    <InputNumber disabled/>
+                                </Form.Item>
+                                <Form.Item label={genFile + ' - new'} name={"genFile_" + genFile} key={"genFile_" + genFile} rules={[...rules, {validator: checkGenFile}]}>
                                     <InputNumber min={formInitialValues["genFile_" + genFile]} onChange={onNumChange}/>
                                 </Form.Item>
-                            );
+                                </div>;
                         })}
-                        {/* <Tooltip placement="topLeft" title={helpText.mutate}>
-                            <Form.Item label="Mutate from Existing" name="genFile_mutate" rules={rules}>
-                                <InputNumber min={0} onChange={onNumChange} />
-                            </Form.Item>
-                        </Tooltip>
-
-                        <Tooltip placement="topLeft" title={helpText.random_generated}>
-                            <Form.Item label="Randomly Generated" name="genFile_random_generated">
-                                <InputNumber disabled />
-                            </Form.Item>
-                        </Tooltip> */}
                     </Collapse.Panel>
                 </Collapse>
                 <br />
