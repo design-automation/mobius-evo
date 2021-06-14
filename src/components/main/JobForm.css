@@ -4,3 +4,11 @@
   padding: 5em 0em;
   box-sizing: border-box;
 }
+.form-text{
+    border:none;
+    color: rgba(0, 0, 0, 0.85);
+    background-color: transparent;
+}
+.ant-input-number-disabled .ant-input-number-input {
+    cursor: default !important;
+}

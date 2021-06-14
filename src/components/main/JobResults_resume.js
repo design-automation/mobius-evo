@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Form, Space, Button, Radio, InputNumber, Upload, message, Tag, Table, Modal, Row, Collapse, Tooltip, notification } from "antd";
+import { Form, Space, Button, Divider, InputNumber, Upload, message, Tag, Table, Modal, Row, Collapse, Tooltip, notification, Descriptions } from "antd";
 import { uploadS3, listS3, getS3Url, downloadS3 } from "../../amplify-apis/userFiles";
 import { UploadOutlined } from "@ant-design/icons";
 import { API, graphqlOperation } from "aws-amplify";
@@ -806,6 +806,14 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
                 initialValues={formInitialValues}
             >
                 <Collapse defaultActiveKey={["1", "2", "3", "4"]}>
+                    <Collapse.Panel header="New Generative Settings" key="2" extra={genExtra("resume_gen_file")}>
+                        <Button htmlType="button" onClick={() => showModalGen(null)}>Add Gen File</Button>
+                        <Table dataSource={genTableData} columns={genTableColumns} rowKey="genUrl"></Table>
+                    </Collapse.Panel>
+                    <Collapse.Panel header="New Evaluative Settings" key="3" extra={genExtra("resume_eval_file")}>
+                        <Button htmlType="button" onClick={() => showModalEval(null)}>Add Eval File</Button>
+                        <Table dataSource={evalTableData} columns={evalTableColumns} rowKey="evalUrl"></Table>
+                    </Collapse.Panel>
                     <Collapse.Panel header="New Search Settings" key="1" extra={genExtra("resume_new_settings_1")}>
                         <Tooltip placement="topLeft" title={helpText.new_gens}>
                             <Form.Item label="Number of new Generations" name="new_gens" rules={rules}>
@@ -815,13 +823,13 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
 
                         <Tooltip placement="topLeft" title={helpText.new_designs}>
                             <Form.Item label="Number of New Designs" name="new_designs" rules={rules}>
-                                <InputNumber min={0} disabled/>
+                                <InputNumber className="form-text" disabled/>
                             </Form.Item>
                         </Tooltip>
 
                         <Tooltip placement="topLeft" title={helpText.max_designs}>
                             <Form.Item label="New Max Designs" name="max_designs" rules={rules}>
-                                <InputNumber disabled />
+                                <InputNumber className="form-text" disabled />
                             </Form.Item>
                         </Tooltip>
 
@@ -831,6 +839,25 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
                             </Form.Item>
                         </Tooltip>
 
+                        <Divider/>
+
+                        <Tooltip placement="topLeft" title={helpText.total_items}>
+                            <Form.Item label="Total Starting Items" name="genFile_total_items">
+                                <InputNumber className="form-text" disabled />
+                            </Form.Item>
+                        </Tooltip>
+                        {jobSettings.genUrl.map((genUrl) => {
+                            const genFile = genUrl.split("/").pop();
+                            return <div key={"genFile_" + genFile}>
+                                <Form.Item label={genFile + ' - existing'} name={"genFile_existing_" + genFile} key={"genFile_existing_" + genFile}>
+                                    <InputNumber className="form-text" disabled/>
+                                </Form.Item>
+                                <Form.Item label={genFile + ' - new'} name={"genFile_" + genFile} key={"genFile_" + genFile} rules={[...rules, {validator: checkGenFile}]}>
+                                    <InputNumber min={formInitialValues["genFile_" + genFile]} onChange={onNumChange}/>
+                                </Form.Item>
+                                </div>;
+                        })}
+                        <Divider/>
                         <Tooltip placement="topLeft" title={helpText.tournament_size}>
                             <Form.Item label="Tournament Size" name="tournament_size" rules={[...rules,{ validator: checkTournament }]}>
                                 <InputNumber min={1} />
@@ -842,32 +869,7 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
                                 <InputNumber min={0.001} max={1} step={0.001}/>
                             </Form.Item>
                         </Tooltip>
-                    </Collapse.Panel>
-                    <Collapse.Panel header="New Generative Settings" key="2" extra={genExtra("resume_gen_file")}>
-                        <Button htmlType="button" onClick={() => showModalGen(null)}>Add Gen File</Button>
-                        <Table dataSource={genTableData} columns={genTableColumns} rowKey="genUrl"></Table>
-                    </Collapse.Panel>
-                    <Collapse.Panel header="New Evaluative Settings" key="3" extra={genExtra("resume_eval_file")}>
-                        <Button htmlType="button" onClick={() => showModalEval(null)}>Add Eval File</Button>
-                        <Table dataSource={evalTableData} columns={evalTableColumns} rowKey="evalUrl"></Table>
-                    </Collapse.Panel>
-                    <Collapse.Panel header="New Initialization Settings" key="4" extra={genExtra("resume_new_settings_2")}>
-                        <Tooltip placement="topLeft" title={helpText.total_items}>
-                            <Form.Item label="Total Starting Items" name="genFile_total_items">
-                                <InputNumber disabled />
-                            </Form.Item>
-                        </Tooltip>
-                        {jobSettings.genUrl.map((genUrl) => {
-                            const genFile = genUrl.split("/").pop();
-                            return <div key={"genFile_" + genFile}>
-                                <Form.Item label={genFile + ' - existing'} name={"genFile_existing_" + genFile} key={"genFile_existing_" + genFile}>
-                                    <InputNumber disabled/>
-                                </Form.Item>
-                                <Form.Item label={genFile + ' - new'} name={"genFile_" + genFile} key={"genFile_" + genFile} rules={[...rules, {validator: checkGenFile}]}>
-                                    <InputNumber min={formInitialValues["genFile_" + genFile]} onChange={onNumChange}/>
-                                </Form.Item>
-                                </div>;
-                        })}
+
                     </Collapse.Panel>
                 </Collapse>
                 <br />

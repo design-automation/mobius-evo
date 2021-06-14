@@ -7,4 +7,11 @@
     margin: 0;
     padding: 0;
   }
-  
+.form-text{
+    border:none;
+    color: rgba(0, 0, 0, 0.85);
+    background-color: transparent;
+}
+.ant-input-number-disabled .ant-input-number-input {
+    cursor: default !important;
+}

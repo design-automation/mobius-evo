@@ -354,69 +354,94 @@ function FilterForm({ modelParamsState, jobResultsState, filteredJobResultsState
     ) : null;
 }
 
-function SingularParallelPlot({genFile, plotData, domain, decorativeAxisLabels, legendItems, width}) {
+function SingularParallelPlot({ genFile, plotData, domain, decorativeAxisLabels, legendItems, width, jobResults }) {
     const [hoveredNode, setHoveredNode] = useState(null);
     const [legends, setLegends] = useState(JSON.parse(JSON.stringify(legendItems)));
     function onLegendClick(l) {
         l.disabled = !l.disabled;
-        setLegends(legends)
+        setLegends(legends);
         if (hoveredNode === null) {
             setHoveredNode(false);
         } else {
             setHoveredNode(null);
         }
     }
-    return (<>
-        <h4>{genFile}</h4>
-        <DiscreteColorLegend items={legends} orientation="horizontal" onItemClick={onLegendClick}></DiscreteColorLegend>
-        <XYPlot width={width - 100} height={width / 2 - 200} xType="ordinal" onMouseLeave={() => setHoveredNode(null)}>
-            <XAxis key={`xAxis-${genFile}`} tickValues={decorativeAxisLabels}/>
-            {plotData.map((series) => {
-                if (series.genFile !== genFile) { return null; }
-                for (const l of legends) {
-                    if (l.title === series.genStatus) {
-                        if (l.disabled) { return null; }
-                        break;
+    function onHoveredClick() {
+        jobResults.forEach(data => {
+            if (data.GenID !== hoveredNode.id) {
+                return;
+            }
+            getS3Public(
+                data.owner + "/" + data.JobID + "/" + data.id + "_eval.gi",
+                (url) => {
+                    document.getElementById("hiddenInput").value = url;
+                    document.getElementById("hiddenButton").click();
+                },
+                () => {}
+            );
+            updateTextArea(assembleModelText(data));
+            updateSelectedResult(data.owner + "/" + data.JobID + "/" + data.id);
+        })
+
+    }
+    return (
+        <>
+            <h4>{genFile}</h4>
+            <DiscreteColorLegend items={legends} orientation="horizontal" onItemClick={onLegendClick}></DiscreteColorLegend>
+            <XYPlot width={width - 100} height={width / 2 - 200} xType="ordinal" onMouseLeave={() => setHoveredNode(null)} onClick={onHoveredClick}>
+                <XAxis key={`xAxis-${genFile}`} tickValues={decorativeAxisLabels} />
+                {plotData.map((series) => {
+                    if (series.genFile !== genFile) {
+                        return null;
                     }
-                }
-                return (
-                    <LineSeries
-                        data={series.data}
-                        key={`${series.id}`}
-                        color={series.color}
-                        onSeriesMouseOver={(e) => {
-                            setHoveredNode(series);
-                        }}
-                        strokeWidth={1}
-                    />
-                );
-            })}
-            {(hoveredNode && hoveredNode.genFile === genFile)? 
-                <LineSeries data={hoveredNode.data} key={`${hoveredNode.id}-hovered-border`} color="#ff" strokeWidth={7} /> : null}
-            {(hoveredNode && hoveredNode.genFile === genFile) ? (
-                <LineSeries data={hoveredNode.data} key={`${hoveredNode.id}-hovered-fill`} color={hoveredNode.color} strokeWidth={4}></LineSeries>
-            ) : null}
-            {decorativeAxisLabels.map((cell, index) => {
-                return (
-                    <DecorativeAxis
-                        key={`${genFile}-${index}-axis`}
-                        axisStart={{ x: cell, y: 0 }}
-                        axisEnd={{ x: cell, y: 1 }}
-                        axisDomain={[domain[cell].min, domain[cell].max]}
-                        style={{
-                            text: { color: "#ff" },
-                        }}
-                    />
-                );
-            })}
-        </XYPlot>
-        <br></br>
-        </>)
+                    for (const l of legends) {
+                        if (l.title === series.genStatus) {
+                            if (l.disabled) {
+                                return null;
+                            }
+                            break;
+                        }
+                    }
+                    return (
+                        <LineSeries
+                            data={series.data}
+                            key={`${series.id}`}
+                            color={series.color}
+                            onSeriesMouseOver={(e) => {
+                                setHoveredNode(series);
+                            }}
+                            strokeWidth={1}
+                        />
+                    );
+                })}
+                {hoveredNode && hoveredNode.genFile === genFile ? (
+                    <LineSeries data={hoveredNode.data} key={`${hoveredNode.id}-hovered-border`} color="#ff" strokeWidth={7} />
+                ) : null}
+                {hoveredNode && hoveredNode.genFile === genFile ? (
+                    <LineSeries data={hoveredNode.data} key={`${hoveredNode.id}-hovered-fill`} color={hoveredNode.color} strokeWidth={4} />
+                ) : null}
+                {decorativeAxisLabels.map((cell, index) => {
+                    return (
+                        <DecorativeAxis
+                            key={`${genFile}-${index}-axis`}
+                            axisStart={{ x: cell, y: 0 }}
+                            axisEnd={{ x: cell, y: 1 }}
+                            axisDomain={[domain[cell].min, domain[cell].max]}
+                            style={{
+                                text: { color: "#ff" },
+                            }}
+                        />
+                    );
+                })}
+            </XYPlot>
+            <br></br>
+        </>
+    );
 }
 
 function ParallelPlot({ jobResults }) {
     const [width, setWidth] = useState(window.innerWidth);
-    
+
     useEffect(() => {
         function handleResize() {
             setWidth(window.innerWidth);
@@ -438,8 +463,8 @@ function ParallelPlot({ jobResults }) {
         }
         const genFile = result.genUrl.split("/").pop();
         if (!decorativeAxisLabels[genFile]) {
-            decorativeAxisLabels[genFile] = []
-            domain[genFile] = {score: { min: Infinity, max: -Infinity }}
+            decorativeAxisLabels[genFile] = [];
+            domain[genFile] = { score: { min: Infinity, max: -Infinity } };
         }
         const parameters = JSON.parse(result.params);
         Object.keys(parameters).forEach((paramKey) => {
@@ -456,7 +481,7 @@ function ParallelPlot({ jobResults }) {
         domain[genFile].score.range = domain[genFile].score.max - domain[genFile].score.min;
     });
     for (const i in decorativeAxisLabels) {
-        decorativeAxisLabels[i].push('score')
+        decorativeAxisLabels[i].push("score");
     }
 
     jobResults.forEach((result) => {
@@ -468,12 +493,14 @@ function ParallelPlot({ jobResults }) {
         const genFile = result.genUrl.split("/").pop();
         genFiles[genFile] = true;
         const genStatus = result.live ? "live" : "dead";
-        if (!colors[genFile + ' - ' + genStatus]) {
-            colors[genFile + ' - ' + genStatus] = colors_pallete.pop();
-            if (!legendItems[genFile]) { legendItems[genFile] = []}
+        if (!colors[genFile + " - " + genStatus]) {
+            colors[genFile + " - " + genStatus] = colors_pallete.pop();
+            if (!legendItems[genFile]) {
+                legendItems[genFile] = [];
+            }
             legendItems[genFile].push({
                 title: genStatus,
-                color: colors[genFile + ' - ' + genStatus]
+                color: colors[genFile + " - " + genStatus],
             });
         }
         decorativeAxisLabels[genFile].forEach((paramKey) => {
@@ -492,22 +519,27 @@ function ParallelPlot({ jobResults }) {
         plotData.push({
             id: result.GenID,
             data: resultData,
-            color: colors[genFile + ' - ' + genStatus],
+            color: colors[genFile + " - " + genStatus],
             genFile: genFile,
-            genStatus: genStatus
+            genStatus: genStatus,
         });
     });
     return (
         <>
-            {Object.keys(genFiles).sort().map(genFile => <SingularParallelPlot
-                key={genFile}
-                genFile={genFile}
-                plotData={plotData}
-                domain={domain[genFile]}
-                decorativeAxisLabels={decorativeAxisLabels[genFile]}
-                legendItems={legendItems[genFile]}
-                width={width}
-            ></SingularParallelPlot>)}
+            {Object.keys(genFiles)
+                .sort()
+                .map((genFile) => (
+                    <SingularParallelPlot
+                        key={genFile}
+                        genFile={genFile}
+                        plotData={plotData}
+                        domain={domain[genFile]}
+                        decorativeAxisLabels={decorativeAxisLabels[genFile]}
+                        legendItems={legendItems[genFile]}
+                        width={width}
+                        jobResults={jobResults}
+                    ></SingularParallelPlot>
+                ))}
         </>
     );
 }
@@ -540,7 +572,7 @@ function MinMaxPlot({ jobResults }) {
     let minY = Infinity,
         maxY = -Infinity;
     const scoreData = [];
-    const percentageData = [];
+    const genCountData = [];
     Object.keys(survivalGenerationData).map((generation) => {
         let minVal = Infinity,
             maxVal = -Infinity,
@@ -578,13 +610,14 @@ function MinMaxPlot({ jobResults }) {
             if (key === "__total__") {
                 continue;
             }
-            percentageData.push({
+            genCountData.push({
                 dataType: key.split("/").pop(),
                 generation: generation,
-                percentage: (genCount[key] / genCount.__total__) * 100,
+                genCount: genCount[key],
             });
         }
     });
+    console.log(genCountData)
     const config = {
         title: {
             visible: true,
@@ -594,9 +627,9 @@ function MinMaxPlot({ jobResults }) {
             visible: true,
             text: "Score Progression over Generations",
         },
-        data: [scoreData, percentageData],
+        data: [scoreData, genCountData],
         xField: "generation",
-        yField: ["score", "percentage"],
+        yField: ["score", "genCount"],
         // seriesField: 'dataType',
         // color: ['#cb302d', '#e3ca8c', '#82d1de'],
         xAxis: {
@@ -613,7 +646,7 @@ function MinMaxPlot({ jobResults }) {
                 geometry: "column",
                 isStack: true,
                 seriesField: "dataType",
-                isPercent: true,
+                isPercent: false,
             },
         ],
 
@@ -625,9 +658,9 @@ function MinMaxPlot({ jobResults }) {
                     text: "Score",
                 },
             },
-            percentage: {
+            genCount: {
                 title: {
-                    text: "Gen File Count Ratio",
+                    text: "Gen File Count",
                 },
             },
         },
@@ -683,6 +716,8 @@ function ScorePlot({ jobResults }) {
     const plotData = JSON.parse(JSON.stringify(jobResults));
     let minY,
         maxY = 0;
+
+    const regionAnnotations = []
     plotData.forEach((result) => {
         if (result.score) {
             if (!minY) {
@@ -692,7 +727,20 @@ function ScorePlot({ jobResults }) {
             maxY = Math.max(maxY, result.score);
         }
         result.genFile = result.genUrl.split("/").pop() + " - " + (result.live ? "live" : "dead");
+
+        if (result.generation % 2 === 1) { return; }
+        if (regionAnnotations.length === 0 || regionAnnotations[regionAnnotations.length - 1].gen !== result.generation) {
+            regionAnnotations.push({
+                type: 'region',
+                start: [(Number(result.GenID) / jobResults.length) * 100 + '%', '0%'],
+                end: [((Number(result.GenID) + 1) / jobResults.length) * 100 + '%', '100%'],
+                gen: result.generation
+            })
+        } else {
+            regionAnnotations[regionAnnotations.length - 1].end = [((Number(result.GenID) + 1) / jobResults.length) * 100 + '%', '100%']
+        }
     });
+
     const config = {
         title: {
             visible: true,
@@ -741,6 +789,7 @@ function ScorePlot({ jobResults }) {
                 </div>`;
             },
         },
+        annotations: regionAnnotations,
     };
     if (minY && maxY) {
         config.yAxis = {
@@ -1212,12 +1261,12 @@ function JobResults() {
         },
     ];
     let pastSettingsData = [];
-    let numGen = 0
+    let numGen = 0;
     if (jobSettings) {
         pastSettingsData = JSON.parse(jobSettings.history);
-        jobResults.forEach(r => {
+        jobResults.forEach((r) => {
             numGen = Math.max(numGen, r.generation);
-        })
+        });
     }
 
     return (
