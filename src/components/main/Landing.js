@@ -3,7 +3,7 @@ import "./Landing.css";
 import { Auth } from "aws-amplify";
 import { onAuthUIStateChange } from "@aws-amplify/ui-components";
 import { AuthContext } from "../../Contexts";
-import { AmplifyAuthenticator, AmplifySignIn } from "@aws-amplify/ui-react";
+import { AmplifyAuthenticator, AmplifySignIn, AmplifySignUp } from "@aws-amplify/ui-react";
 import { Space, Collapse, Row, Col, Typography, Button, Descriptions, Checkbox, Affix } from "antd";
 import { Link } from 'react-router-dom';
 import { UploadOutlined } from "@ant-design/icons";
@@ -26,6 +26,31 @@ function Landing() {
     
         return (
             <AmplifyAuthenticator usernameAlias="email">
+                <AmplifySignUp
+                    slot="sign-up"
+                    usernameAlias="email"s
+                    headerText="Create a Mobius-evo Account"
+                    formFields={[
+                    {
+                        type: "email",
+                        label: "E-mail",
+                        placeholder: "email@email.mail",
+                        required: true
+                    },
+                    {
+                        type: "password",
+                        label: "Password",
+                        placeholder: "********",
+                        required: true
+                    },
+                    {
+                        type: "nickname",
+                        label: "How should we address you?",
+                        placeholder: "nickname",
+                        required: true
+                    }
+                    ]}
+                />
                 <AmplifySignIn slot="sign-in" usernameAlias="email" headerText="Get started!" hideSignUp />
             </AmplifyAuthenticator>
         );
