@@ -127,9 +127,9 @@ function JobTable({ isDataLoadingState, jobDataState }) {
     }
 
     async function deleteJobAndParams(jobID, userID) {
+        setIsDataLoading(true);
         // const genParamIDList = [];
         // const promiseList = [];
-        // setIsDataLoading(true);
         // await getGenEvalParamByJobID(jobID, userID, genParamIDList);
         // genParamIDList.forEach((paramID) =>
         //     promiseList.push(
@@ -151,16 +151,16 @@ function JobTable({ isDataLoadingState, jobDataState }) {
         })
         // promiseList.push(deleteS3(`${userID}/${jobID}`, () => {}))
         // await Promise.all(promiseList);
-        // setjobData((jobData) => {
-        //     const newjobData = [];
-        //     jobData.forEach(rowObj => {
-        //         if (rowObj.id === jobID) {
-        //             return;
-        //         }
-        //         newjobData.push(rowObj);
-        //     });
-        //     return newjobData;
-        // })
+        setjobData((jobData) => {
+            const newjobData = [];
+            jobData.forEach(rowObj => {
+                if (rowObj.id === jobID) {
+                    return;
+                }
+                newjobData.push(rowObj);
+            });
+            return newjobData;
+        })
         setIsDataLoading(false);
     }
 
