@@ -95,7 +95,9 @@ function JobTable({ isDataLoadingState, jobDataState }) {
             key: "action",
             fixed: "right",
             render: (text, record) => 
-            <button className='text-btn' onClick={() => deleteJobAndParams(record.id, record.owner)}>delete</button>
+            <button className='text-btn'
+            // onClick={() => deleteJobAndParams(record.id, record.owner)}
+            >delete</button>
             ,
         },
     ];

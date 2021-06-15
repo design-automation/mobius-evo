@@ -164,7 +164,7 @@
         },
         "Runtime": "nodejs14.x",
         "Layers": [
-          "arn:aws:lambda:us-east-1:114056409474:layer:evo_layer:29"
+          "arn:aws:lambda:us-east-1:114056409474:layer:evo_layer:310"
         ],
         "Timeout": "900",
         "MemorySize": 1024
@@ -534,6 +534,7 @@
       "Properties": {
         "BatchSize": 1,
         "Enabled": true,
+        "MaximumRetryAttempts": 1,
         "EventSourceArn": {
           "Fn::ImportValue": {
             "Fn::Sub": "${apiMobiusEvoGraphQLGraphQLAPIIdOutput}:GetAtt:JobTable:StreamArn"
