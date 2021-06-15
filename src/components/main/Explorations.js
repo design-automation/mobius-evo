@@ -127,42 +127,40 @@ function JobTable({ isDataLoadingState, jobDataState }) {
     }
 
     async function deleteJobAndParams(jobID, userID) {
-        const genParamIDList = [];
-        const promiseList = [];
-        setIsDataLoading(true);
-        await getGenEvalParamByJobID(jobID, userID, genParamIDList);
-        genParamIDList.forEach((paramID) =>
-            promiseList.push(
-                API.graphql(
-                    graphqlOperation(deleteGenEvalParam, {
-                        input: { id: paramID },
-                    })
-                ).catch((err) => {
-                    throw err;
-                })
-            )
-        );
-        promiseList.push(
-            API.graphql(
-                graphqlOperation(deleteJob, {
-                    input: { id: jobID },
-                })
-            ).catch((err) => {
-                throw err;
+        // const genParamIDList = [];
+        // const promiseList = [];
+        // setIsDataLoading(true);
+        // await getGenEvalParamByJobID(jobID, userID, genParamIDList);
+        // genParamIDList.forEach((paramID) =>
+        //     promiseList.push(
+        //         API.graphql(
+        //             graphqlOperation(deleteGenEvalParam, {
+        //                 input: { id: paramID },
+        //             })
+        //         ).catch((err) => {
+        //             throw err;
+        //         })
+        //     )
+        // );
+        await API.graphql(
+            graphqlOperation(deleteJob, {
+                input: { id: jobID },
             })
-        );
-        promiseList.push(deleteS3(`${userID}/${jobID}`, () => {}))
-        await Promise.all(promiseList);
-        setjobData((jobData) => {
-            const newjobData = [];
-            jobData.forEach(rowObj => {
-                if (rowObj.id === jobID) {
-                    return;
-                }
-                newjobData.push(rowObj);
-            });
-            return newjobData;
+        ).catch((err) => {
+            throw err;
         })
+        // promiseList.push(deleteS3(`${userID}/${jobID}`, () => {}))
+        // await Promise.all(promiseList);
+        // setjobData((jobData) => {
+        //     const newjobData = [];
+        //     jobData.forEach(rowObj => {
+        //         if (rowObj.id === jobID) {
+        //             return;
+        //         }
+        //         newjobData.push(rowObj);
+        //     });
+        //     return newjobData;
+        // })
         setIsDataLoading(false);
     }
 
