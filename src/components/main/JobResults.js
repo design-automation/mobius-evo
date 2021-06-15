@@ -1206,12 +1206,14 @@ function JobResults() {
             key: "runStart",
             defaultSortOrder: "descend",
             fixed: "left",
+            width: 120,
             render: (isoTime) => new Date(isoTime).toLocaleString(),
         },
         {
             title: "End Time",
             dataIndex: "runEnd",
             key: "runEnd",
+            width: 120,
             fixed: "left",
             render: (isoTime) => new Date(isoTime).toLocaleString(),
         },
@@ -1219,6 +1221,7 @@ function JobResults() {
             title: "Run Duration",
             dataIndex: "runTime",
             key: "runTime",
+            width: 120,
             fixed: "left",
             render: (runDuration) => {
                 const minutes = Math.floor(runDuration / 60);
@@ -1235,13 +1238,14 @@ function JobResults() {
         {
             title: "Status",
             dataIndex: "status",
+            width: 100,
             key: "status",
         },
         {
             title: "Gen File(s)",
             dataIndex: "genUrl",
             key: "genFile",
-            render: (urls) => urls.map((text) => text.split("/").pop()).join(", "),
+            render: (urls) => (<>{urls.map(text => <p>{text.split("/").pop()}</p>)}</>),
         },
         {
             title: "Eval File",
@@ -1249,15 +1253,16 @@ function JobResults() {
             key: "evalFile",
             render: (text) => text.split("/").pop(),
         },
-        ...expandedSettings.map((dataKey) => ({
-            title: dataKey.replace(/_/g, " "),
-            dataIndex: dataKey.toLowerCase(),
-            key: dataKey.toLowerCase(),
-        })),
         {
-            title: "Mutation Standard Deviation",
-            dataIndex: "mutation_sd",
-            key: "mutation_sd",
+            title: "Settings",
+            dataIndex: "max_designs",
+            key: "evalFile",
+            render: (_, data) => (<>
+                    <p>{`max designs: ${data.max_designs}`}</p>
+                    <p>{`population size: ${data.population_size}`}</p>
+                    <p>{`tournament size: ${data.tournament_size}`}</p>
+                    <p>{`mutation standard deviation: ${data.mutation_sd}`}</p>
+            </>),
         },
     ];
     let pastSettingsData = [];
@@ -1369,7 +1374,7 @@ function JobResults() {
                                                 dataSource={pastSettingsData}
                                                 columns={pastSettingsColumns}
                                                 rowKey="runStart"
-                                                scroll={{ x: 2000 }}
+                                                scroll={{ x: 1000 }}
                                                 sticky
                                             ></Table>
                                         </Collapse.Panel>
