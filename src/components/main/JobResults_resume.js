@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Form, Space, Button, Radio, InputNumber, Upload, message, Tag, Table, Modal, Row, Collapse, Tooltip, notification } from "antd";
+import { Form, Space, Button, Divider, InputNumber, Upload, message, Tag, Table, Modal, Row, Collapse, Tooltip, notification, Descriptions } from "antd";
 import { uploadS3, listS3, getS3Url, downloadS3 } from "../../amplify-apis/userFiles";
 import { UploadOutlined } from "@ant-design/icons";
 import { API, graphqlOperation } from "aws-amplify";
@@ -79,6 +79,7 @@ function FileSelectionModal({form, isModalVisibleState, jobSettingsState, jobRes
                 setJobSettings(jobSettings);
                 let newID = jobResults.length;
                 const newJobs = [];
+                let newLiveCount = 0;
                 jobResults
                     .filter((result) => result.genUrl === replacedUrl && result.live === true)
                     .forEach((result) => {
@@ -125,6 +126,7 @@ function FileSelectionModal({form, isModalVisibleState, jobSettingsState, jobRes
                         result.live = false;
                         newJobs.push(newParam);
                         newID += 1;
+                        newLiveCount++;
                     });
                 allPromises.push(
                     API.graphql(
@@ -135,7 +137,8 @@ function FileSelectionModal({form, isModalVisibleState, jobSettingsState, jobRes
                         .then()
                         .catch((err) => console.log(err))
                 );
-                formUpdate["genFile_" + newFile] = 0
+                formUpdate["genFile_existing_" + newFile] = newLiveCount;
+                formUpdate["genFile_" + newFile] = 0;
                 setJobResults(jobResults.concat(newJobs));
             }
         }
@@ -527,11 +530,11 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
             newJobSettings.genUrl[genKey] = genUrl;
             return genKey;
         });
-        newJobSettings.genKeys.forEach((key) => {
-            newJobSettings["genFile_" + key] -= jobResults.filter(
-                (result) => result.live === true && result.genUrl === newJobSettings.genUrl[key]
-            ).length;
-        });
+        // newJobSettings.genKeys.forEach((key) => {
+        //     newJobSettings["genFile_" + key] -= jobResults.filter(
+        //         (result) => result.live === true && result.genUrl === newJobSettings.genUrl[key]
+        //     ).length;
+        // });
         newJobSettings.evalUrl = jobSettings.evalUrl;
         setIsLoading(true);
         await initParams(jobSettings.id, newJobSettings);
@@ -574,12 +577,33 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
     function handleFinishFail() {
         notify('Unable to Resume Search', 'Please check for Errors in form!', true);
     }
-    function onNewDesignChange(e) {
+    function onNumGenChange() {
         setTimeout(() => {
-            const new_designs = Number(form.getFieldValue("new_designs"));
-            const formUpdate = { max_designs: jobSettings.max_designs + new_designs };
-            form.setFieldsValue(formUpdate);
-        }, 0);
+            const fieldValues = form.getFieldsValue()
+            let livePop = jobResults.filter(r => r.live).length;
+            let firstGenPop = fieldValues.genFile_total_items - livePop;
+
+            // total initial items number is smaller/equal to current live size => new first gen pop = new gen num * pop size
+            if (firstGenPop <= 0) {
+                firstGenPop = livePop;
+            }
+
+            let newDesigns = firstGenPop;
+            livePop += firstGenPop;
+
+            for (let i = 1; i < fieldValues.new_gens; i++) {
+                if (livePop > fieldValues.population_size) {
+                    livePop = fieldValues.population_size
+                }
+                newDesigns += livePop;
+                livePop += livePop;
+            }
+
+            form.setFieldsValue({
+                max_designs: jobResults.length + newDesigns,
+                new_designs: newDesigns
+            })
+        },0)
     }
     function onPopChange(e) {
         onNumChange(null);
@@ -587,13 +611,14 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
     function onNumChange(e) {
         setTimeout(() => {
             let totalCount = 0;
+            const formVal = form.getFieldsValue();
             jobSettings.genUrl.forEach((genUrl) => {
                 const genFile = genUrl.split("/").pop();
-                const inpID = "genFile_" + genFile;
-                totalCount += Number(form.getFieldValue(inpID));
+                totalCount += Number(formVal["genFile_" + genFile]) + Number(formVal["genFile_existing_" + genFile]);
             });
             const formUpdate = { genFile_total_items: totalCount };
             form.setFieldsValue(formUpdate);
+            onNumGenChange();
         }, 0);
     }
     function checkTournament(_, value) {
@@ -608,8 +633,7 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
         let totalCount = 0;
         jobSettings.genUrl.forEach((genUrl) => {
             const genFile = genUrl.split("/").pop();
-            const inpID = "genFile_" + genFile;
-            totalCount += Number(formVal[inpID]);
+            totalCount += Number(formVal["genFile_" + genFile]) + Number(formVal["genFile_existing_" + genFile]);
         });
         if ((totalCount- formInitialValues.initial_live_items) > formVal.new_designs) {
             return Promise.reject(new Error('Total number of new genFile parameters cannot be higher than max number of new designs'));
@@ -617,15 +641,15 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
         return Promise.resolve();
     }
     const formInitialValues = {
-        max_designs: jobSettings.max_designs * 2,
-        new_designs: jobSettings.max_designs,
+        max_designs: jobResults.length + jobSettings.population_size * 5,
+        new_gens: 5,
+        new_designs: jobSettings.population_size * 5,
         population_size: jobSettings.population_size,
         tournament_size: jobSettings.tournament_size,
         mutation_sd: jobSettings.mutation_sd,
 
         genFile_total_items: jobSettings.population_size,
         initial_live_items : 0
-        // genFile_mutate: 0,
     };
     if (jobSettings.jobStatus === "cancelled") {
         formInitialValues.max_designs = jobSettings.max_designs;
@@ -634,13 +658,14 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
     jobSettings.genUrl.forEach((url) => {
         const genFile = url.split("/").pop();
         formInitialValues["genFile_" + genFile] = 0;
+        formInitialValues["genFile_existing_" + genFile] = 0;
     });
     jobResults.forEach((result) => {
         if (!result.live) {
             return;
         }
         const genFile = result.genUrl.split("/").pop();
-        formInitialValues["genFile_" + genFile] += 1;
+        formInitialValues["genFile_existing_" + genFile] += 1;
         formInitialValues.initial_live_items += 1;
     });
 
@@ -781,16 +806,30 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
                 initialValues={formInitialValues}
             >
                 <Collapse defaultActiveKey={["1", "2", "3", "4"]}>
+                    <Collapse.Panel header="New Generative Settings" key="2" extra={genExtra("resume_gen_file")}>
+                        <Button htmlType="button" onClick={() => showModalGen(null)}>Add Gen File</Button>
+                        <Table dataSource={genTableData} columns={genTableColumns} rowKey="genUrl"></Table>
+                    </Collapse.Panel>
+                    <Collapse.Panel header="New Evaluative Settings" key="3" extra={genExtra("resume_eval_file")}>
+                        <Button htmlType="button" onClick={() => showModalEval(null)}>Add Eval File</Button>
+                        <Table dataSource={evalTableData} columns={evalTableColumns} rowKey="evalUrl"></Table>
+                    </Collapse.Panel>
                     <Collapse.Panel header="New Search Settings" key="1" extra={genExtra("resume_new_settings_1")}>
-                        <Tooltip placement="topLeft" title={helpText.max_designs}>
-                            <Form.Item label="New Max Designs" name="max_designs" rules={rules}>
-                                <InputNumber disabled />
+                        <Tooltip placement="topLeft" title={helpText.new_gens}>
+                            <Form.Item label="Number of new Generations" name="new_gens" rules={rules}>
+                                <InputNumber min={0} onChange={onNumGenChange} />
                             </Form.Item>
                         </Tooltip>
 
                         <Tooltip placement="topLeft" title={helpText.new_designs}>
                             <Form.Item label="Number of New Designs" name="new_designs" rules={rules}>
-                                <InputNumber min={0} onChange={onNewDesignChange} />
+                                <InputNumber className="form-text" disabled/>
+                            </Form.Item>
+                        </Tooltip>
+
+                        <Tooltip placement="topLeft" title={helpText.max_designs}>
+                            <Form.Item label="New Max Designs" name="max_designs" rules={rules}>
+                                <InputNumber className="form-text" disabled />
                             </Form.Item>
                         </Tooltip>
 
@@ -800,6 +839,25 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
                             </Form.Item>
                         </Tooltip>
 
+                        <Divider/>
+
+                        <Tooltip placement="topLeft" title={helpText.total_items}>
+                            <Form.Item label="Total Starting Items" name="genFile_total_items">
+                                <InputNumber className="form-text" disabled />
+                            </Form.Item>
+                        </Tooltip>
+                        {jobSettings.genUrl.map((genUrl) => {
+                            const genFile = genUrl.split("/").pop();
+                            return <div key={"genFile_" + genFile}>
+                                <Form.Item label={genFile + ' - existing'} name={"genFile_existing_" + genFile} key={"genFile_existing_" + genFile}>
+                                    <InputNumber className="form-text" disabled/>
+                                </Form.Item>
+                                <Form.Item label={genFile + ' - new'} name={"genFile_" + genFile} key={"genFile_" + genFile} rules={[...rules, {validator: checkGenFile}]}>
+                                    <InputNumber min={formInitialValues["genFile_" + genFile]} onChange={onNumChange}/>
+                                </Form.Item>
+                                </div>;
+                        })}
+                        <Divider/>
                         <Tooltip placement="topLeft" title={helpText.tournament_size}>
                             <Form.Item label="Tournament Size" name="tournament_size" rules={[...rules,{ validator: checkTournament }]}>
                                 <InputNumber min={1} />
@@ -811,40 +869,7 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
                                 <InputNumber min={0.001} max={1} step={0.001}/>
                             </Form.Item>
                         </Tooltip>
-                    </Collapse.Panel>
-                    <Collapse.Panel header="New Generative Settings" key="2" extra={genExtra("resume_gen_file")}>
-                        <Button htmlType="button" onClick={() => showModalGen(null)}>Add Gen File</Button>
-                        <Table dataSource={genTableData} columns={genTableColumns} rowKey="genUrl"></Table>
-                    </Collapse.Panel>
-                    <Collapse.Panel header="New Evaluative Settings" key="3" extra={genExtra("resume_eval_file")}>
-                        <Button htmlType="button" onClick={() => showModalEval(null)}>Add Eval File</Button>
-                        <Table dataSource={evalTableData} columns={evalTableColumns} rowKey="evalUrl"></Table>
-                    </Collapse.Panel>
-                    <Collapse.Panel header="New Initialization Settings" key="4" extra={genExtra("resume_new_settings_2")}>
-                        <Tooltip placement="topLeft" title={helpText.total_items}>
-                            <Form.Item label="Total Starting Items" name="genFile_total_items">
-                                <InputNumber disabled />
-                            </Form.Item>
-                        </Tooltip>
-                        {jobSettings.genUrl.map((genUrl) => {
-                            const genFile = genUrl.split("/").pop();
-                            return (
-                                <Form.Item label={genFile} name={"genFile_" + genFile} key={"genFile_" + genFile} rules={[...rules, {validator: checkGenFile}]}>
-                                    <InputNumber min={formInitialValues["genFile_" + genFile]} onChange={onNumChange}/>
-                                </Form.Item>
-                            );
-                        })}
-                        {/* <Tooltip placement="topLeft" title={helpText.mutate}>
-                            <Form.Item label="Mutate from Existing" name="genFile_mutate" rules={rules}>
-                                <InputNumber min={0} onChange={onNumChange} />
-                            </Form.Item>
-                        </Tooltip>
 
-                        <Tooltip placement="topLeft" title={helpText.random_generated}>
-                            <Form.Item label="Randomly Generated" name="genFile_random_generated">
-                                <InputNumber disabled />
-                            </Form.Item>
-                        </Tooltip> */}
                     </Collapse.Panel>
                 </Collapse>
                 <br />

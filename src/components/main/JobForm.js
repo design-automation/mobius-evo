@@ -25,13 +25,15 @@ import {
     Collapse,
     notification,
     Modal,
-    Slider
+    Slider,
+    Divider
 } from "antd";
 import Help from "./utils/Help";
 import helpJSON from "../../assets/help/help_text_json";
 
 const testDefault = {
     description: `new test`,
+    num_gen: 5,
     max_designs: 100,
     population_size: 20,
     tournament_size: 10,
@@ -475,10 +477,18 @@ function SettingsForm({currentStateManage}) {
     }
     const formInitialValues = testDefault;
 
-    function onPopChange(e) {
+    function onNumGenChange() {
+        setTimeout(() => {
+            const fieldValues = form.getFieldsValue()
+            form.setFieldsValue({
+                max_designs: fieldValues.genFile_total_items + (fieldValues.num_gen - 1) * fieldValues.population_size
+            })
+        },0)
+    }
+    function onPopChange() {
         onNumChange(null);
     }
-    function onNumChange(e) {
+    function onNumChange() {
         setTimeout(() => {
             const starting_population = Number(form.getFieldValue("population_size"));
             let totalCount = 0;
@@ -492,6 +502,8 @@ function SettingsForm({currentStateManage}) {
             if (countDiff < 0) { countDiff = 0; }
             formUpdate["genFile_random_generated"] = countDiff;
             form.setFieldsValue(formUpdate);
+
+            onNumGenChange();
         }, 0);
     }
     function checkTournament(_, value) {
@@ -600,6 +612,14 @@ function SettingsForm({currentStateManage}) {
                 initialValues={formInitialValues}
             >
                 <Collapse defaultActiveKey={["1", "2", "3", "4"]}>
+                    <Collapse.Panel header="Generative Settings" key="2" extra={genExtra("gen_file")}>
+                        <Button htmlType="button" onClick={() => showModalGen(null)}>Add Gen File</Button>
+                        <Table dataSource={genTableData} columns={genTableColumns} rowKey="genUrl"></Table>
+                    </Collapse.Panel>
+                    <Collapse.Panel header="Evaluative Settings" key="3" extra={genExtra("eval_file")}>
+                        <Button htmlType="button" onClick={() => showModalEval(null)}>Add Eval File</Button>
+                        <Table dataSource={evalTableData} columns={evalTableColumns} rowKey="evalUrl"></Table>
+                    </Collapse.Panel>
                     <Collapse.Panel header="Search Settings" key="1" extra={genExtra("settings_1")}>
                         <Tooltip placement="topLeft" title={helpText.description}>
                             <Form.Item label="Description" name="description">
@@ -607,9 +627,15 @@ function SettingsForm({currentStateManage}) {
                             </Form.Item>
                         </Tooltip>
 
+                        <Tooltip placement="topLeft" title={helpText.num_gen}>
+                            <Form.Item label="Number of Generations" name="num_gen" rules={rules}>
+                                <InputNumber min={1} onChange={onNumGenChange} />
+                            </Form.Item>
+                        </Tooltip>
+
                         <Tooltip placement="topLeft" title={helpText.max_designs}>
                             <Form.Item label="Number of Designs" name="max_designs" rules={rules}>
-                                <InputNumber min={1} />
+                                <InputNumber className="form-text" disabled/>
                             </Form.Item>
                         </Tooltip>
 
@@ -619,31 +645,11 @@ function SettingsForm({currentStateManage}) {
                             </Form.Item>
                         </Tooltip>
 
-                        <Tooltip placement="topLeft" title={helpText.tournament_size}>
-                            <Form.Item label="Tournament Size" name="tournament_size" rules={[...rules, { validator: checkTournament }]}>
-                                <InputNumber />
-                            </Form.Item>
-                        </Tooltip>
+                        <Divider/>
 
-                        <Tooltip placement="topLeft" title={helpText.mutation_sd}>
-                            <Form.Item label="Mutation Standard Deviation" name="mutation_sd" >
-                                <Slider min={0.001} max={1} step={0.001} width="50%"/>
-                            </Form.Item>
-                        </Tooltip>
-
-                    </Collapse.Panel>
-                    <Collapse.Panel header="Generative Settings" key="2" extra={genExtra("gen_file")}>
-                        <Button htmlType="button" onClick={() => showModalGen(null)}>Add Gen File</Button>
-                        <Table dataSource={genTableData} columns={genTableColumns} rowKey="genUrl"></Table>
-                    </Collapse.Panel>
-                    <Collapse.Panel header="Evaluative Settings" key="3" extra={genExtra("eval_file")}>
-                        <Button htmlType="button" onClick={() => showModalEval(null)}>Add Eval File</Button>
-                        <Table dataSource={evalTableData} columns={evalTableColumns} rowKey="evalUrl"></Table>
-                    </Collapse.Panel>
-                    <Collapse.Panel header="Initialization Settings" key="4" extra={genExtra("settings_2")}>
                         <Tooltip placement="topLeft" title={helpText.total_items}>
                             <Form.Item label="Total Starting Items" name="genFile_total_items">
-                                <InputNumber disabled />
+                                <InputNumber className="form-text" disabled />
                             </Form.Item>
                         </Tooltip>
                         {genFiles.map((genUrl) => {
@@ -656,7 +662,21 @@ function SettingsForm({currentStateManage}) {
                         })}
                         <Tooltip placement="topLeft" title={helpText.random_generated}>
                             <Form.Item label="Randomly Generated" name="genFile_random_generated">
-                                <InputNumber disabled />
+                                <InputNumber className="form-text" disabled />
+                            </Form.Item>
+                        </Tooltip>
+
+                        <Divider/>
+
+                        <Tooltip placement="topLeft" title={helpText.tournament_size}>
+                            <Form.Item label="Tournament Size" name="tournament_size" rules={[...rules, { validator: checkTournament }]}>
+                                <InputNumber />
+                            </Form.Item>
+                        </Tooltip>
+
+                        <Tooltip placement="topLeft" title={helpText.mutation_sd}>
+                            <Form.Item label="Mutation Standard Deviation" name="mutation_sd" >
+                                <InputNumber min={0.001} max={1} step={0.001}/>
                             </Form.Item>
                         </Tooltip>
                     </Collapse.Panel>

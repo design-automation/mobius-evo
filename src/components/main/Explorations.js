@@ -68,7 +68,7 @@ function JobTable({ isDataLoadingState, jobDataState }) {
             dataIndex: "genUrl",
             key: "genFile",
             ...sortProps,
-            render: (urls) => urls.map(text => text.split("/").pop()).join(', '),
+            render: (urls) => (<>{urls.map(text => <p>{text.split("/").pop()}</p>)}</>),
         },
         {
             title: "Eval File",

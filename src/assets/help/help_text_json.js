@@ -11,7 +11,8 @@ const helpJSON = {
             settings_2: "Initilisation Settings Help",
 
             description: "Short Description for New Search",
-            max_designs: "Number of Generations",
+            max_designs: "Number of Total Designs",
+            num_gen: "Number of Generations",
             population_size: "Total population in each Generation",
             tournament_size: "Number of individuals selected at random for mutation",
             survival_size: "Number of fittest individuals to survive to the next Generation",
@@ -38,7 +39,8 @@ const helpJSON = {
             resume_new_settings_2: "Resume Initilisation Help",
 
             max_designs: "New total number of Designs",
-            new_designs: "Number of new Generations",
+            new_designs: "Number of new Designs",
+            new_gens: "Number of new Generations",
             population_size: "Total population in each Generation",
             tournament_size: "Number of individuals selected at random for mutation",
             survival_size: "Number of fittest individuals to survive to the next Generation",

@@ -155,7 +155,7 @@ async function getData(jobID, userID, setJobSettings, setJobResults, setIsLoadin
                     // setIsLoading(true);
                     setJobResults([]);
                     getData(jobID, userID, setJobSettings, setJobResults, setIsLoading, callback);
-                }, 5000);
+                }, 10000);
             }
         })
         .catch((err) => {
@@ -354,145 +354,76 @@ function FilterForm({ modelParamsState, jobResultsState, filteredJobResultsState
     ) : null;
 }
 
-function ParallelPlot({ jobResults }) {
-    const [width, setWidth] = useState(window.innerWidth);
+function SingularParallelPlot({ genFile, plotData, domain, decorativeAxisLabels, legendItems, width, jobResults }) {
     const [hoveredNode, setHoveredNode] = useState(null);
-    const [hiddenGen, setHiddenGen] = useState({});
-    const [legendItemList, setLegendItemList] = useState(null);
-    
-    useEffect(() => {
-        function handleResize() {
-            setWidth(window.innerWidth);
-        }
-        window.addEventListener("resize", handleResize);
-    });
-
-    function toggleHidden(selLegend) {
-        if (hiddenGen[selLegend.title]) {
-            hiddenGen[selLegend.title] = false;
-        } else {
-            hiddenGen[selLegend.title] = true;
-        }
-        setHiddenGen(hiddenGen);
-        if (hoveredNode !== false) {
+    const [legends, setLegends] = useState(JSON.parse(JSON.stringify(legendItems)));
+    function onLegendClick(l) {
+        l.disabled = !l.disabled;
+        setLegends(legends);
+        if (hoveredNode === null) {
             setHoveredNode(false);
         } else {
             setHoveredNode(null);
         }
-        const itemList = legendItemList? legendItemList:legendItems;
-        for (const item of itemList) {
-            if (selLegend.title === item.title) {
-                item.disabled = !item.disabled;
-                setLegendItemList(itemList);
-                return;
-            }
-        }
     }
-
-    const legendItems = [];
-    const colors_pallete = ["#A16F47", "#B400C2", "#683F8F", "#09AABD", "#3C9E7F", "#B81E00", "#AB4B5D", "#0000A6", "#4169A6", "#0BB524"];
-    const colors = {};
-
-    const plotData = [];
-    const domain = {
-        score: { min: Infinity, max: -Infinity },
-    };
-    const decorativeAxisLabels = [];
-    jobResults.forEach((result) => {
-        if (!result.score) {
-            return;
-        }
-        const parameters = JSON.parse(result.params);
-        Object.keys(parameters).forEach((paramKey) => {
-            if (!domain[paramKey]) {
-                domain[paramKey] = { min: parameters[paramKey], max: parameters[paramKey] };
-                decorativeAxisLabels.push(paramKey);
-            }
-            domain[paramKey].min = Math.min(domain[paramKey].min, parameters[paramKey]);
-            domain[paramKey].max = Math.max(domain[paramKey].max, parameters[paramKey]);
-            domain[paramKey].range = domain[paramKey].max - domain[paramKey].min;
-        });
-        domain.score.min = Math.min(domain.score.min, result.score);
-        domain.score.max = Math.max(domain.score.max, result.score);
-        domain.score.range = domain.score.max - domain.score.min;
-    });
-    decorativeAxisLabels.push('score')
-    plotData.push({
-        id: '_',
-        data: decorativeAxisLabels.map(label => {
-            return {
-                y: null,
-                x: label,
-            }
-        }),
-        color: '#ff',
-        genFile: ''
-    })
-    jobResults.forEach((result) => {
-        if (!result.score) {
-            return;
-        }
-        const parameters = JSON.parse(result.params);
-        const resultData = [];
-        const genFile = result.genUrl.split("/").pop() + " - " + (result.live ? "live" : "dead");
-        if (!colors[genFile]) {
-            colors[genFile] = colors_pallete.pop();
-            legendItems.push({
-                title: genFile,
-                color: colors[genFile]
-            });
-        }
-        decorativeAxisLabels.forEach((paramKey) => {
-            if (!parameters[paramKey] && parameters[paramKey] !== 0) {
+    function onHoveredClick() {
+        jobResults.forEach(data => {
+            if (data.GenID !== hoveredNode.id) {
                 return;
             }
-            resultData.push({
-                y: (parameters[paramKey] - domain[paramKey].min) / domain[paramKey].range,
-                x: paramKey,
-            });
-        });
-        resultData.push({
-            y: (result.score - domain.score.min) / domain.score.range,
-            x: "score",
-        });
-        plotData.push({
-            id: result.GenID,
-            data: resultData,
-            color: colors[genFile],
-            genFile: genFile
-        });
-    });
+            getS3Public(
+                data.owner + "/" + data.JobID + "/" + data.id + "_eval.gi",
+                (url) => {
+                    document.getElementById("hiddenInput").value = url;
+                    document.getElementById("hiddenButton").click();
+                },
+                () => {}
+            );
+            updateTextArea(assembleModelText(data));
+            updateSelectedResult(data.owner + "/" + data.JobID + "/" + data.id);
+        })
+
+    }
     return (
         <>
-            <DiscreteColorLegend items={legendItemList?legendItemList:legendItems} orientation="horizontal"
-                onItemClick={toggleHidden}></DiscreteColorLegend>
-            <XYPlot width={width - 100} height={width / 2 - 200} xType="ordinal" onMouseLeave={() => setHoveredNode(null)}>
-                <XAxis tickValues={decorativeAxisLabels}/>
-                {plotData.map((series, index) => {
-                    if (hiddenGen[series.genFile]) {
+            <h4>{genFile}</h4>
+            <DiscreteColorLegend items={legends} orientation="horizontal" onItemClick={onLegendClick}></DiscreteColorLegend>
+            <XYPlot width={width - 100} height={width / 2 - 200} xType="ordinal" onMouseLeave={() => setHoveredNode(null)} onClick={onHoveredClick}>
+                <XAxis key={`xAxis-${genFile}`} tickValues={decorativeAxisLabels} />
+                {plotData.map((series) => {
+                    if (series.genFile !== genFile) {
                         return null;
+                    }
+                    for (const l of legends) {
+                        if (l.title === series.genStatus) {
+                            if (l.disabled) {
+                                return null;
+                            }
+                            break;
+                        }
                     }
                     return (
                         <LineSeries
                             data={series.data}
-                            key={`series-${index}`}
+                            key={`${series.id}`}
                             color={series.color}
                             onSeriesMouseOver={(e) => {
-                                console.log(e);
                                 setHoveredNode(series);
                             }}
                             strokeWidth={1}
                         />
                     );
                 })}
-                {hoveredNode ? <LineSeries data={hoveredNode.data} key={`series-hovered-border`} color="#ff" strokeWidth={7} /> : null}
-                {hoveredNode ? (
-                    <LineSeries data={hoveredNode.data} key={`series-hovered-fill`} color={hoveredNode.color} strokeWidth={4}></LineSeries>
+                {hoveredNode && hoveredNode.genFile === genFile ? (
+                    <LineSeries data={hoveredNode.data} key={`${hoveredNode.id}-hovered-border`} color="#ff" strokeWidth={7} />
+                ) : null}
+                {hoveredNode && hoveredNode.genFile === genFile ? (
+                    <LineSeries data={hoveredNode.data} key={`${hoveredNode.id}-hovered-fill`} color={hoveredNode.color} strokeWidth={4} />
                 ) : null}
                 {decorativeAxisLabels.map((cell, index) => {
                     return (
                         <DecorativeAxis
-                            key={`${index}-axis`}
+                            key={`${genFile}-${index}-axis`}
                             axisStart={{ x: cell, y: 0 }}
                             axisEnd={{ x: cell, y: 1 }}
                             axisDomain={[domain[cell].min, domain[cell].max]}
@@ -503,6 +434,112 @@ function ParallelPlot({ jobResults }) {
                     );
                 })}
             </XYPlot>
+            <br></br>
+        </>
+    );
+}
+
+function ParallelPlot({ jobResults }) {
+    const [width, setWidth] = useState(window.innerWidth);
+
+    useEffect(() => {
+        function handleResize() {
+            setWidth(window.innerWidth);
+        }
+        window.addEventListener("resize", handleResize);
+    });
+
+    const legendItems = {};
+    const colors_pallete = ["#A16F47", "#B400C2", "#683F8F", "#09AABD", "#3C9E7F", "#B81E00", "#AB4B5D", "#0000A6", "#4169A6", "#0BB524"];
+    const colors = {};
+
+    const plotData = [];
+    const genFiles = {};
+    const domain = {};
+    const decorativeAxisLabels = {};
+    jobResults.forEach((result) => {
+        if (!result.score) {
+            return;
+        }
+        const genFile = result.genUrl.split("/").pop();
+        if (!decorativeAxisLabels[genFile]) {
+            decorativeAxisLabels[genFile] = [];
+            domain[genFile] = { score: { min: Infinity, max: -Infinity } };
+        }
+        const parameters = JSON.parse(result.params);
+        Object.keys(parameters).forEach((paramKey) => {
+            if (!domain[genFile][paramKey]) {
+                domain[genFile][paramKey] = { min: parameters[paramKey], max: parameters[paramKey] };
+                decorativeAxisLabels[genFile].push(paramKey);
+            }
+            domain[genFile][paramKey].min = Math.min(domain[genFile][paramKey].min, parameters[paramKey]);
+            domain[genFile][paramKey].max = Math.max(domain[genFile][paramKey].max, parameters[paramKey]);
+            domain[genFile][paramKey].range = domain[genFile][paramKey].max - domain[genFile][paramKey].min;
+        });
+        domain[genFile].score.min = Math.min(domain[genFile].score.min, result.score);
+        domain[genFile].score.max = Math.max(domain[genFile].score.max, result.score);
+        domain[genFile].score.range = domain[genFile].score.max - domain[genFile].score.min;
+    });
+    for (const i in decorativeAxisLabels) {
+        decorativeAxisLabels[i].push("score");
+    }
+
+    jobResults.forEach((result) => {
+        if (!result.score) {
+            return;
+        }
+        const parameters = JSON.parse(result.params);
+        const resultData = [];
+        const genFile = result.genUrl.split("/").pop();
+        genFiles[genFile] = true;
+        const genStatus = result.live ? "live" : "dead";
+        if (!colors[genFile + " - " + genStatus]) {
+            colors[genFile + " - " + genStatus] = colors_pallete.pop();
+            if (!legendItems[genFile]) {
+                legendItems[genFile] = [];
+            }
+            legendItems[genFile].push({
+                title: genStatus,
+                color: colors[genFile + " - " + genStatus],
+            });
+        }
+        decorativeAxisLabels[genFile].forEach((paramKey) => {
+            if (!parameters[paramKey] && parameters[paramKey] !== 0) {
+                return;
+            }
+            resultData.push({
+                y: (parameters[paramKey] - domain[genFile][paramKey].min) / domain[genFile][paramKey].range,
+                x: paramKey,
+            });
+        });
+        resultData.push({
+            y: (result.score - domain[genFile].score.min) / domain[genFile].score.range,
+            x: "score",
+        });
+        plotData.push({
+            id: result.GenID,
+            data: resultData,
+            color: colors[genFile + " - " + genStatus],
+            genFile: genFile,
+            genStatus: genStatus,
+        });
+    });
+    return (
+        <>
+            {Object.keys(genFiles)
+                .sort()
+                .map((genFile) => (
+                    <SingularParallelPlot
+                        key={genFile}
+                        genFile={genFile}
+                        plotData={plotData}
+                        domain={domain[genFile]}
+                        decorativeAxisLabels={decorativeAxisLabels[genFile]}
+                        legendItems={legendItems[genFile]}
+                        width={width}
+                        jobResults={jobResults}
+                    ></SingularParallelPlot>
+                ))}
         </>
     );
 }
@@ -530,12 +567,12 @@ function MinMaxPlot({ jobResults }) {
         }
     });
     // console.log('survivalGenerationData', survivalGenerationData)
-    delete survivalGenerationData[1];
+    // delete survivalGenerationData[1];
 
     let minY = Infinity,
         maxY = -Infinity;
     const scoreData = [];
-    const percentageData = [];
+    const genCountData = [];
     Object.keys(survivalGenerationData).map((generation) => {
         let minVal = Infinity,
             maxVal = -Infinity,
@@ -573,13 +610,14 @@ function MinMaxPlot({ jobResults }) {
             if (key === "__total__") {
                 continue;
             }
-            percentageData.push({
+            genCountData.push({
                 dataType: key.split("/").pop(),
                 generation: generation,
-                percentage: (genCount[key] / genCount.__total__) * 100,
+                genCount: genCount[key],
             });
         }
     });
+    console.log(genCountData)
     const config = {
         title: {
             visible: true,
@@ -589,9 +627,9 @@ function MinMaxPlot({ jobResults }) {
             visible: true,
             text: "Score Progression over Generations",
         },
-        data: [scoreData, percentageData],
+        data: [scoreData, genCountData],
         xField: "generation",
-        yField: ["score", "percentage"],
+        yField: ["score", "genCount"],
         // seriesField: 'dataType',
         // color: ['#cb302d', '#e3ca8c', '#82d1de'],
         xAxis: {
@@ -608,7 +646,7 @@ function MinMaxPlot({ jobResults }) {
                 geometry: "column",
                 isStack: true,
                 seriesField: "dataType",
-                isPercent: true,
+                isPercent: false,
             },
         ],
 
@@ -620,9 +658,9 @@ function MinMaxPlot({ jobResults }) {
                     text: "Score",
                 },
             },
-            percentage: {
+            genCount: {
                 title: {
-                    text: "Gen File Count Ratio",
+                    text: "Gen File Count",
                 },
             },
         },
@@ -678,6 +716,8 @@ function ScorePlot({ jobResults }) {
     const plotData = JSON.parse(JSON.stringify(jobResults));
     let minY,
         maxY = 0;
+
+    const regionAnnotations = []
     plotData.forEach((result) => {
         if (result.score) {
             if (!minY) {
@@ -687,7 +727,20 @@ function ScorePlot({ jobResults }) {
             maxY = Math.max(maxY, result.score);
         }
         result.genFile = result.genUrl.split("/").pop() + " - " + (result.live ? "live" : "dead");
+
+        if (result.generation % 2 === 1) { return; }
+        if (regionAnnotations.length === 0 || regionAnnotations[regionAnnotations.length - 1].gen !== result.generation) {
+            regionAnnotations.push({
+                type: 'region',
+                start: [(Number(result.GenID) / jobResults.length) * 100 + '%', '0%'],
+                end: [((Number(result.GenID) + 1) / jobResults.length) * 100 + '%', '100%'],
+                gen: result.generation
+            })
+        } else {
+            regionAnnotations[regionAnnotations.length - 1].end = [((Number(result.GenID) + 1) / jobResults.length) * 100 + '%', '100%']
+        }
     });
+
     const config = {
         title: {
             visible: true,
@@ -736,6 +789,7 @@ function ScorePlot({ jobResults }) {
                 </div>`;
             },
         },
+        annotations: regionAnnotations,
     };
     if (minY && maxY) {
         config.yAxis = {
@@ -1152,12 +1206,14 @@ function JobResults() {
             key: "runStart",
             defaultSortOrder: "descend",
             fixed: "left",
+            width: 120,
             render: (isoTime) => new Date(isoTime).toLocaleString(),
         },
         {
             title: "End Time",
             dataIndex: "runEnd",
             key: "runEnd",
+            width: 120,
             fixed: "left",
             render: (isoTime) => new Date(isoTime).toLocaleString(),
         },
@@ -1165,6 +1221,7 @@ function JobResults() {
             title: "Run Duration",
             dataIndex: "runTime",
             key: "runTime",
+            width: 120,
             fixed: "left",
             render: (runDuration) => {
                 const minutes = Math.floor(runDuration / 60);
@@ -1181,13 +1238,14 @@ function JobResults() {
         {
             title: "Status",
             dataIndex: "status",
+            width: 100,
             key: "status",
         },
         {
             title: "Gen File(s)",
             dataIndex: "genUrl",
             key: "genFile",
-            render: (urls) => urls.map((text) => text.split("/").pop()).join(", "),
+            render: (urls) => (<>{urls.map(text => <p>{text.split("/").pop()}</p>)}</>),
         },
         {
             title: "Eval File",
@@ -1195,20 +1253,25 @@ function JobResults() {
             key: "evalFile",
             render: (text) => text.split("/").pop(),
         },
-        ...expandedSettings.map((dataKey) => ({
-            title: dataKey.replace(/_/g, " "),
-            dataIndex: dataKey.toLowerCase(),
-            key: dataKey.toLowerCase(),
-        })),
         {
-            title: "Mutation Standard Deviation",
-            dataIndex: "mutation_sd",
-            key: "mutation_sd",
+            title: "Settings",
+            dataIndex: "max_designs",
+            key: "evalFile",
+            render: (_, data) => (<>
+                    <p>{`max designs: ${data.max_designs}`}</p>
+                    <p>{`population size: ${data.population_size}`}</p>
+                    <p>{`tournament size: ${data.tournament_size}`}</p>
+                    <p>{`mutation standard deviation: ${data.mutation_sd}`}</p>
+            </>),
         },
     ];
     let pastSettingsData = [];
+    let numGen = 0;
     if (jobSettings) {
         pastSettingsData = JSON.parse(jobSettings.history);
+        jobResults.forEach((r) => {
+            numGen = Math.max(numGen, r.generation);
+        });
     }
 
     return (
@@ -1287,6 +1350,9 @@ function JobResults() {
                                                 <Descriptions.Item label="Eval File(s)" key="evalFile">
                                                     {getDisplayUrlString(jobSettings.evalUrl)}
                                                 </Descriptions.Item>
+                                                <Descriptions.Item label="Number of Generations" key="num_gen">
+                                                    {numGen}
+                                                </Descriptions.Item>
                                                 {expandedSettings.map((dataKey) => (
                                                     <Descriptions.Item label={dataKey.replace(/_/g, " ")} key={dataKey}>
                                                         {jobSettings[dataKey.toLowerCase()]}
@@ -1308,7 +1374,7 @@ function JobResults() {
                                                 dataSource={pastSettingsData}
                                                 columns={pastSettingsColumns}
                                                 rowKey="runStart"
-                                                scroll={{ x: 2000 }}
+                                                scroll={{ x: 1000 }}
                                                 sticky
                                             ></Table>
                                         </Collapse.Panel>
