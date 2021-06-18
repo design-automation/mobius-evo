@@ -541,6 +541,7 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
 
         jobSettings.jobStatus = "inprogress";
         jobSettings.run = true;
+        jobSettings.num_gen = newJobSettings.num_gen;
         jobSettings.max_designs = newJobSettings.max_designs;
         jobSettings.population_size = newJobSettings.population_size;
         jobSettings.tournament_size = newJobSettings.tournament_size;
@@ -549,14 +550,21 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
             graphqlOperation(updateJob, {
                 input: {
                     id: jobSettings.id,
+                    description: jobSettings.description,
                     jobStatus: "inprogress",
                     run: true,
                     expiration: null,
-                    description: jobSettings.description,
-                    max_designs: newJobSettings.max_designs,
-                    population_size: newJobSettings.population_size,
-                    tournament_size: newJobSettings.tournament_size,
-                    mutation_sd: newJobSettings.mutation_sd,
+                    run_settings: JSON.stringify({
+                        num_gen: newJobSettings.num_gen,
+                        max_designs: newJobSettings.max_designs,
+                        population_size: newJobSettings.population_size,
+                        tournament_size: newJobSettings.tournament_size,
+                        mutation_sd: newJobSettings.mutation_sd,
+                    }),
+                    max_designs: null,
+                    population_size: null,
+                    tournament_size: null,
+                    mutation_sd: null,
                 },
             })
         )

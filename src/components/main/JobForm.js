@@ -456,11 +456,18 @@ function SettingsForm({currentStateManage}) {
             expiration: null,
             description: jobSettings.description,
             history: null,
-            max_designs: jobSettings.max_designs,
-            population_size: jobSettings.population_size,
-            tournament_size: jobSettings.tournament_size,
-            mutation_sd: jobSettings.mutation_sd,
-            survival_size: null,
+            run_settings: JSON.stringify({
+                num_gen: jobSettings.num_gen,
+                max_designs: jobSettings.max_designs,
+                population_size: jobSettings.population_size,
+                tournament_size: jobSettings.tournament_size,
+                mutation_sd: jobSettings.mutation_sd
+            }),
+
+            max_designs: null,
+            population_size: null,
+            tournament_size: null,
+            mutation_sd: null,
             errorMessage: null,
         };
         API.graphql(

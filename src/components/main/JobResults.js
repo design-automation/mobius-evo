@@ -146,8 +146,13 @@ async function getData(jobID, userID, setJobSettings, setJobResults, setIsLoadin
     )
         .then((queryResult) => {
             const jobData = queryResult.data.getJob;
-            if (jobData && !jobData.mutation_sd) {
-                jobData.mutation_sd = 0.05;
+            if (jobData.run_settings) {
+                const runSettings = JSON.parse(jobData.run_settings);
+                jobData.num_gen = runSettings.num_gen;
+                jobData.max_designs = runSettings.max_designs;
+                jobData.population_size = runSettings.population_size;
+                jobData.tournament_size = runSettings.tournament_size;
+                jobData.mutation_sd = runSettings.mutation_sd;
             }
             setJobSettings(jobData);
             if (!jobData || jobData.jobStatus === "inprogress") {

@@ -11,10 +11,10 @@ export const onCreateJob = /* GraphQL */ `
       expiration
       description
       history
+      run_settings
       max_designs
       population_size
       tournament_size
-      survival_size
       mutation_sd
       createdAt
       endedAt
@@ -36,10 +36,10 @@ export const onUpdateJob = /* GraphQL */ `
       expiration
       description
       history
+      run_settings
       max_designs
       population_size
       tournament_size
-      survival_size
       mutation_sd
       createdAt
       endedAt
@@ -61,10 +61,10 @@ export const onDeleteJob = /* GraphQL */ `
       expiration
       description
       history
+      run_settings
       max_designs
       population_size
       tournament_size
-      survival_size
       mutation_sd
       createdAt
       endedAt

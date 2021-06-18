@@ -255,6 +255,14 @@ function Explorations() {
             .then((queriedResults) => {
                 const jobList = queriedResults.data.listJobs.items;
                 const jobData = jobList.map((data, index) => {
+                    if (data.run_settings) {
+                        const runSettings = JSON.parse(data.run_settings);
+                        data.num_gen = runSettings.num_gen;
+                        data.max_designs = runSettings.max_designs;
+                        data.population_size = runSettings.population_size;
+                        data.tournament_size = runSettings.tournament_size;
+                        data.mutation_sd = runSettings.mutation_sd;
+                    }
                     if (!data.mutation_sd) { data.mutation_sd = 0.05; }
                     return {
                         key: index + 1,
