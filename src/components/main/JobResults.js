@@ -146,6 +146,7 @@ async function getData(jobID, userID, setJobSettings, setJobResults, setIsLoadin
     )
         .then((queryResult) => {
             const jobData = queryResult.data.getJob;
+            console.log(jobData)
             if (jobData.run_settings) {
                 const runSettings = JSON.parse(jobData.run_settings);
                 jobData.num_gen = runSettings.num_gen;
@@ -1250,24 +1251,41 @@ function JobResults() {
             title: "Gen File(s)",
             dataIndex: "genUrl",
             key: "genFile",
-            render: (urls) => (<>{urls.map(text => <p>{text.split("/").pop()}</p>)}</>),
+            render: (urls) => (<>{urls.map(text => {
+                const filekey = text.split("/").pop();
+                return <p key={filekey}>{filekey}</p>
+            })}</>),
         },
         {
             title: "Eval File",
             dataIndex: "evalUrl",
             key: "evalFile",
-            render: (text) => text.split("/").pop(),
+            render: (text) => <p>{text.split("/").pop()}</p>,
         },
         {
             title: "Settings",
             dataIndex: "max_designs",
             key: "evalFile",
-            render: (_, data) => (<>
-                    <p>{`max designs: ${data.max_designs}`}</p>
-                    <p>{`population size: ${data.population_size}`}</p>
-                    <p>{`tournament size: ${data.tournament_size}`}</p>
-                    <p>{`mutation standard deviation: ${data.mutation_sd}`}</p>
-            </>),
+            render: (_, data) => {
+                let max_designs, population_size, tournament_size, mutation_sd;
+                if (data.run_settings) {
+                    max_designs = data.run_settings.max_designs
+                    population_size = data.run_settings.population_size
+                    tournament_size = data.run_settings.tournament_size
+                    mutation_sd = data.run_settings.mutation_sd
+                } else {
+                    max_designs = data.max_designs
+                    population_size = data.population_size
+                    tournament_size = data.tournament_size
+                    mutation_sd = data.mutation_sd
+                }
+                return (<>
+                    <p key='md'>{`max designs: ${max_designs}`}</p>
+                    <p key='ps'>{`population size: ${population_size}`}</p>
+                    <p key='ts'>{`tournament size: ${tournament_size}`}</p>
+                    <p key='msd'>{`mutation standard deviation: ${mutation_sd}`}</p>
+                </>);
+            },
         },
     ];
     let pastSettingsData = [];

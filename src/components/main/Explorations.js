@@ -68,7 +68,10 @@ function JobTable({ isDataLoadingState, jobDataState }) {
             dataIndex: "genUrl",
             key: "genFile",
             ...sortProps,
-            render: (urls) => (<>{urls.map(text => <p>{text.split("/").pop()}</p>)}</>),
+            render: (urls) => (<>{urls.map(text => {
+                const url = text.split("/").pop()
+                return <p key={url}>{url}</p>
+            })}</>),
         },
         {
             title: "Eval File",
@@ -209,7 +212,7 @@ function JobTable({ isDataLoadingState, jobDataState }) {
             loading={isDataLoading}
             dataSource={jobData}
             columns={columns}
-            rowKey="key"
+            rowKey="id"
             showSorterTooltip={false}
             onChange={handleTableChange}
             expandable={{
