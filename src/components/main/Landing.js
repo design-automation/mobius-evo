@@ -51,7 +51,7 @@ function Landing() {
                     }
                     ]}
                 />
-                <AmplifySignIn slot="sign-in" usernameAlias="email" headerText="Get started!" hideSignUp />
+                <AmplifySignIn slot="sign-in" usernameAlias="email" headerText="Get started!" />
             </AmplifyAuthenticator>
         );
     } 
