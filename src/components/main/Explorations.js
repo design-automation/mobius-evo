@@ -4,15 +4,14 @@ import { Space, Row, Button, Descriptions, Badge, Tree, Spin, Drawer, Tag, Popco
 import { Link } from "react-router-dom";
 import { PlusSquareOutlined, SyncOutlined, CheckCircleOutlined, MinusCircleOutlined, ClockCircleOutlined } from "@ant-design/icons";
 import { API, graphqlOperation } from "aws-amplify";
-import { listJobs, generationsByJobId } from "../../graphql/queries";
-import { updateJob, deleteGenEvalParam, deleteJob } from "../../graphql/mutations";
-import { deleteS3 } from "../../amplify-apis/userFiles";
+import { listJobs } from "../../graphql/queries";
+import { deleteJob } from "../../graphql/mutations";
 import { AuthContext } from "../../Contexts";
 import Help from './utils/Help';
 import "./Explorations.css";
+import {compareAscend, compareDescend} from './utils/UtilFunctions'
 
 function JobTable({ isDataLoadingState, jobDataState }) {
-    const expandedSettings = ["Max_Designs", "Population_Size", "Tournament_Size"];
     const { isDataLoading, setIsDataLoading } = isDataLoadingState;
     const { jobData, setjobData } = jobDataState;
     const sortProps = {
@@ -28,18 +27,11 @@ function JobTable({ isDataLoadingState, jobDataState }) {
             render: (text, record) => 
             <button className='text-btn' onClick={() => handleRowClick(record)}>{text}</button>
         },
-        // {
-        //     title: "Created At",
-        //     dataIndex: "createdAt",
-        //     key: "createdAt",
-        //     ...sortProps,
-        //     defaultSortOrder: "descend",
-        //     render: (text) => new Date(text).toLocaleString(),
-        // },
         {
             title: "Status",
             dataIndex: "jobStatus",
             key: "status",
+            width: 120,
             fixed: "left",
             ...sortProps,
             render: (text) => {
@@ -59,6 +51,7 @@ function JobTable({ isDataLoadingState, jobDataState }) {
             title: "Last Modified",
             dataIndex: "updatedAt",
             key: "updatedAt",
+            width: 120,
             ...sortProps,
             defaultSortOrder: "descend",
             render: (text) => (<Space>{new Date(text).toLocaleString()}</Space>)
@@ -80,23 +73,38 @@ function JobTable({ isDataLoadingState, jobDataState }) {
             ...sortProps,
             render: (text) => text.split("/").pop(),
         },
-        ...expandedSettings.map((dataKey) => ({
-            title: dataKey.replace(/_/g, ' '),
-            dataIndex: dataKey.toLowerCase(),
-            key: dataKey.toLowerCase(),
-            ...sortProps,
-        })),
         {
-            title: "Mutation Standard Deviation",
-            dataIndex: "mutation_sd",
-            key: "mutation_sd",
-            ...sortProps
+            title: "Settings",
+            dataIndex: "max_designs",
+            key: "evalFile",
+            render: (_, data) => {
+                let max_designs, population_size, tournament_size, mutation_sd;
+                if (data.run_settings) {
+                    const runSettings = JSON.parse(data.run_settings)
+                    max_designs = runSettings.max_designs
+                    population_size = runSettings.population_size
+                    tournament_size = runSettings.tournament_size
+                    mutation_sd = runSettings.mutation_sd
+                } else {
+                    max_designs = data.max_designs
+                    population_size = data.population_size
+                    tournament_size = data.tournament_size
+                    mutation_sd = data.mutation_sd
+                }
+                return (<>
+                    <p key='md'>{`max designs: ${max_designs}`}</p>
+                    <p key='ps'>{`population size: ${population_size}`}</p>
+                    <p key='ts'>{`tournament size: ${tournament_size}`}</p>
+                    <p key='msd'>{`mutation standard deviation: ${mutation_sd}`}</p>
+                </>);
+            }
         },
         {
             title: "Action",
             dataIndex: "action",
             key: "action",
             fixed: "right",
+            width: 120,
             render: (text, record) => 
             <button className='text-btn'
                 onClick={() => deleteJobAndParams(record.id, record.owner)}
@@ -105,48 +113,8 @@ function JobTable({ isDataLoadingState, jobDataState }) {
         },
     ];
 
-    async function getGenEvalParamByJobID(jobID, userID, resultList, nextToken = null) {
-        await API.graphql(
-            graphqlOperation(generationsByJobId, {
-                limit: 1000,
-                owner: { eq: userID },
-                JobID: jobID,
-                filter: null,
-                items: {},
-                nextToken,
-            })
-        )
-            .then((queryResult) => {
-                let queriedJobResults = queryResult.data.generationsByJobID.items;
-                if (queryResult.data.generationsByJobID.nextToken) {
-                    getGenEvalParamByJobID(jobID, userID, resultList, (nextToken = queryResult.data.generationsByJobID.nextToken)).catch((err) => {
-                        throw err;
-                    });
-                }
-                queriedJobResults.forEach((result) => resultList.push(result.id));
-            })
-            .catch((err) => {
-                console.log(err);
-                throw err;
-            });
-    }
-
     async function deleteJobAndParams(jobID, userID) {
         setIsDataLoading(true);
-        // const genParamIDList = [];
-        // const promiseList = [];
-        // await getGenEvalParamByJobID(jobID, userID, genParamIDList);
-        // genParamIDList.forEach((paramID) =>
-        //     promiseList.push(
-        //         API.graphql(
-        //             graphqlOperation(deleteGenEvalParam, {
-        //                 input: { id: paramID },
-        //             })
-        //         ).catch((err) => {
-        //             throw err;
-        //         })
-        //     )
-        // );
         await API.graphql(
             graphqlOperation(deleteJob, {
                 input: { id: jobID },
@@ -154,8 +122,6 @@ function JobTable({ isDataLoadingState, jobDataState }) {
         ).catch((err) => {
             throw err;
         })
-        // promiseList.push(deleteS3(`${userID}/${jobID}`, () => {}))
-        // await Promise.all(promiseList);
         setjobData((jobData) => {
             const newjobData = [];
             jobData.forEach(rowObj => {
@@ -170,24 +136,6 @@ function JobTable({ isDataLoadingState, jobDataState }) {
     }
 
     const handleTableChange = (pagination, filters, sorter) => {
-        const compareAscend = (a, b) => {
-            if (a < b) {
-                return -1;
-            } else if (a > b) {
-                return 1;
-            } else {
-                return 0;
-            }
-        };
-        const compareDescend = (a, b) => {
-            if (a > b) {
-                return -1;
-            } else if (a < b) {
-                return 1;
-            } else {
-                return 0;
-            }
-        };
         const [field, order] = [sorter.field, sorter.order];
         const _jobData = [...jobData];
         if (order === "ascend") {
@@ -224,7 +172,7 @@ function JobTable({ isDataLoadingState, jobDataState }) {
                 showQuickJumper: true,
                 showTotal: (total) => `${total} files`,
             }}
-            scroll={{ x: 1800 }} sticky
+            scroll={{ x: 1200 }} sticky
         />
     </>);
 }

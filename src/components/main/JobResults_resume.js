@@ -7,6 +7,8 @@ import { createGenEvalParam, updateGenEvalParam, updateJob } from "../../graphql
 import "./JobResults_resume.css";
 import Help from "./utils/Help";
 import helpJSON from "../../assets/help/help_text_json";
+import {compareAscend, compareDescend} from './utils/UtilFunctions'
+import { generationsByJobId, listJobs } from "../../graphql/queries";
 
 const notify = (title, text, isWarn = false) => {
     if (isWarn) {
@@ -22,11 +24,11 @@ const notify = (title, text, isWarn = false) => {
     });
 };
 
-function FileSelectionModal({form, isModalVisibleState, jobSettingsState, jobResultsState, replacedUrl, replaceEvalCheck }) {
+function FileSelectionModal({form, isFileModalVisibleState, jobSettingsState, jobResultsState, replacedUrl, replaceEvalCheck }) {
     const [s3Files, setS3Files] = useState([]);
     const [uploadedFiles, setUploadedFiles] = useState([]);
     const [isTableLoading, setIsTableLoading] = useState(true);
-    const { isModalVisible, setIsModalVisible } = isModalVisibleState;
+    const { isFileModalVisible, setIsFileModalVisible } = isFileModalVisibleState;
     const { jobSettings, setJobSettings } = jobSettingsState;
     const { jobResults, setJobResults } = jobResultsState;
     const [selectedRows, setSelectedRows] = useState([]);
@@ -146,13 +148,13 @@ function FileSelectionModal({form, isModalVisibleState, jobSettingsState, jobRes
         form.setFieldsValue(formUpdate);
         setSelectedRows([])
         setSelectedRowKeys([])
-        setIsModalVisible(false);
+        setIsFileModalVisible(false);
     };
     const handleEvalOk = async () => {
         if (selectedRows.length === 0 || !selectedRows[0].filename) {
             setSelectedRows([])
             setSelectedRowKeys([])
-            setIsModalVisible(false);
+            setIsFileModalVisible(false);
             return;
         }
         const newFile = selectedRows[0].filename;
@@ -234,11 +236,11 @@ function FileSelectionModal({form, isModalVisibleState, jobSettingsState, jobRes
         await Promise.all(allPromises);
         setSelectedRows([])
         setSelectedRowKeys([])
-        setIsModalVisible(false);
+        setIsFileModalVisible(false);
     };
 
     const handleCancel = () => {
-        setIsModalVisible(false);
+        setIsFileModalVisible(false);
     };
 
     const columns = [
@@ -312,7 +314,7 @@ function FileSelectionModal({form, isModalVisibleState, jobSettingsState, jobRes
         listS3(prepS3files, () => {});
         return () => (isSubscribed = false);
     };
-    useEffect(listS3files, [uploadedFiles, isModalVisible]); // Updates when new files are uploaded
+    useEffect(listS3files, [uploadedFiles, isFileModalVisible]); // Updates when new files are uploaded
     function FileUpload({ uploadType }) {
         function handleUpload({ file, onSuccess, onError, onProgress }) {
             uploadS3(`files/${uploadType.toLowerCase()}/${file.name}`, file, onSuccess, onError, onProgress);
@@ -336,24 +338,6 @@ function FileSelectionModal({form, isModalVisibleState, jobSettingsState, jobRes
         );
     }
     const handleTableChange = (pagination, filters, sorter) => {
-        const compareAscend = (a, b) => {
-            if (a < b) {
-                return -1;
-            } else if (a > b) {
-                return 1;
-            } else {
-                return 0;
-            }
-        };
-        const compareDescend = (a, b) => {
-            if (a > b) {
-                return -1;
-            } else if (a < b) {
-                return 1;
-            } else {
-                return 0;
-            }
-        };
         const [field, order] = [sorter.field, sorter.order];
         const _s3Files = [...s3Files];
         if (order === "ascend") {
@@ -365,7 +349,7 @@ function FileSelectionModal({form, isModalVisibleState, jobSettingsState, jobRes
     };
     return (
         <>
-            <Modal title="Select File" visible={isModalVisible} onOk={handleOk} onCancel={handleCancel}>
+            <Modal title="Select File" visible={isFileModalVisible} onOk={handleOk} onCancel={handleCancel}>
                 <Space direction="vertical" size="middle" style={{ width: "100%" }}>
                     <FileUpload uploadType={replaceEvalCheck?"eval":"gen"} />
                     <Table
@@ -388,20 +372,268 @@ function FileSelectionModal({form, isModalVisibleState, jobSettingsState, jobRes
     );
 }
 
+
+function ParamImportModal({ form, jobSettings, isImportModalVisibleState, genFile, importDataState}) {
+    const [isTableLoading, setIsTableLoading] = useState(true);
+    const [jobList, setJobList] = useState([]);
+    const { isImportModalVisible, setIsImportModalVisible } = isImportModalVisibleState;
+    const { importData, setImportData } = importDataState;
+    const [selectedRows, setSelectedRows] = useState([]);
+    const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+    const [lastGenFile, setLastGenFile] = useState(null);
+
+    if (lastGenFile !== genFile) {
+        setSelectedRows([])
+        setSelectedRowKeys([])
+        setJobList([])
+        setLastGenFile(genFile)
+    }
+
+    const handleOk = async () => {
+        importData[genFile].jobs = []
+        importData[genFile].min = 0
+        selectedRows.forEach(row => {
+            importData[genFile].jobs.push({
+                id: row.id,
+                owner: row.owner,
+                description: row.description,
+                resultCount: row.resultList.length,
+                resultList: row.resultList
+            })
+            importData[genFile].min += row.resultList.length
+        })
+        setImportData(importData);
+        const fieldVals = form.getFieldsValue()
+        if (fieldVals["genFile_" + genFile] < importData[genFile].min) {
+            const fieldUpdate = {};
+
+            let totalCount = importData[genFile].min;
+            for (let i in fieldVals) {
+                if (i.startsWith('genFile_') && i !== 'genFile_total_items' && i !== "genFile_" + genFile) {
+                    totalCount += fieldVals[i];
+                }
+            }
+            fieldUpdate["genFile_" + genFile] = importData[genFile].min;
+            fieldUpdate.genFile_total_items = totalCount;
+            form.setFieldsValue(fieldUpdate)
+        }
+        setIsImportModalVisible(false);
+        document.getElementById('triggerNumGenChange').click();
+    };
+
+    const handleCancel = () => {
+        setIsImportModalVisible(false);
+    };
+    const sortProps = {
+        sorter: true,
+        sortDirections: ["ascend", "descend"]
+    }
+
+    const columns = [
+        {
+            title: "Description",
+            dataIndex: "description",
+            key: "description",
+            fixed: "left",
+        },
+        {
+            title: "Gen File(s)",
+            dataIndex: "genUrl",
+            key: "genFile",
+            ...sortProps,
+            render: (urls) => (<>{urls.map(text => {
+                const url = text.split("/").pop()
+                return <p key={url}>{url}</p>
+            })}</>),
+        },
+        {
+            title: "Settings",
+            dataIndex: "max_designs",
+            key: "evalFile",
+            render: (_, data) => {
+                let max_designs, population_size, tournament_size, mutation_sd;
+                if (data.run_settings) {
+                    const runSettings = JSON.parse(data.run_settings)
+                    max_designs = runSettings.max_designs
+                    population_size = runSettings.population_size
+                    tournament_size = runSettings.tournament_size
+                    mutation_sd = runSettings.mutation_sd
+                } else {
+                    max_designs = data.max_designs
+                    population_size = data.population_size
+                    tournament_size = data.tournament_size
+                    mutation_sd = data.mutation_sd
+                }
+                return (<>
+                    <p key='md'>{`max designs: ${max_designs}`}</p>
+                    <p key='ps'>{`population size: ${population_size}`}</p>
+                    <p key='ts'>{`tournament size: ${tournament_size}`}</p>
+                    <p key='msd'>{`mutation standard deviation: ${mutation_sd}`}</p>
+                </>);
+            }
+        },
+        {
+            title: "Param Count",
+            dataIndex: "resultList",
+            key: "resultList",
+            ...sortProps,
+            render: resultList => resultList.length,
+        },
+
+    ];
+
+    async function getGenEvalParamByJobID(jobID, userID, genFile, resultList, nextToken = null) {
+        await API.graphql(
+            graphqlOperation(generationsByJobId, {
+                limit: 1000,
+                owner: { eq: userID },
+                JobID: jobID,
+                filter: null,
+                items: {},
+                nextToken,
+            })
+        )
+            .then((queryResult) => {
+                let queriedJobResults = queryResult.data.generationsByJobID.items;
+                if (queryResult.data.generationsByJobID.nextToken) {
+                    getGenEvalParamByJobID(jobID, userID, genFile, resultList, queryResult.data.generationsByJobID.nextToken).catch((err) => {
+                        throw err;
+                    });
+                }
+                queriedJobResults.forEach((result) => {
+                    if (result.genUrl.endsWith(genFile) && result.live) {
+                        resultList.push(result)
+                    }
+                });
+            })
+            .catch((err) => {
+                console.log(err);
+                throw err;
+            });
+    }
+
+    const listRelatedJobs = () => {
+        setIsTableLoading(true);
+        let isSubscribed = true; // prevents memory leak on unmount
+        API.graphql(
+            graphqlOperation(listJobs, {
+                filter: {
+                    userID: {
+                        eq: jobSettings.owner,
+                    },
+                },
+            })
+        )
+            .then(async (queriedResults) => {
+                const jobList = queriedResults.data.listJobs.items;
+                const queryPromises = [];
+                const jobData = jobList.map((data, index) => {
+                    if (data.id === jobSettings.id) { return null; }
+                    let check = false;
+                    data.genUrl.forEach(url => {
+                        if (url.endsWith('/' + genFile)) {
+                            check = true;
+                        }
+                    })
+                    if (!check) {return null;}
+                    if (data.run_settings) {
+                        const runSettings = JSON.parse(data.run_settings);
+                        data.num_gen = runSettings.num_gen;
+                        data.max_designs = runSettings.max_designs;
+                        data.population_size = runSettings.population_size;
+                        data.tournament_size = runSettings.tournament_size;
+                        data.mutation_sd = runSettings.mutation_sd;
+                    }
+                    if (!data.mutation_sd) { data.mutation_sd = 0.05; }
+                    const resultList = [];
+                    queryPromises.push(getGenEvalParamByJobID(data.id, data.owner, '/' + genFile, resultList, null))
+                    return {
+                        key: index + 1,
+                        ...data,
+                        resultList: resultList
+                    };
+                });
+                await Promise.all(queryPromises);
+                const _jobList = jobData.filter(x => (x !== null) && (x.resultList.length > 0)).sort(
+                    (a, b) => compareDescend(a.updatedAt, b.updatedAt))
+                setJobList(_jobList);
+                setTimeout(() => {
+                    setIsTableLoading(false);
+                }, 1000);
+            })
+            .catch((error) => console.log(error));
+        return () => (isSubscribed = false);
+    };
+    useEffect(listRelatedJobs, [jobSettings, isImportModalVisible]); // Updates when new files are uploaded
+
+    const handleTableChange = (pagination, filters, sorter) => {
+        const [field, order] = [sorter.field, sorter.order];
+        const _jobList = [...jobList];
+        if (order === "ascend") {
+            _jobList.sort((a, b) => compareAscend(a[field], b[field]));
+        } else {
+            _jobList.sort((a, b) => compareDescend(a[field], b[field]));
+        }
+        setJobList(_jobList);
+    };
+    return (
+        <>
+            <Modal title="Select Search" visible={isImportModalVisible} width='80%' onOk={handleOk} onCancel={handleCancel}>
+                <Space direction="vertical" size="middle" style={{ width: "100%" }}>
+                    <Table
+                        dataSource={jobList}
+                        columns={columns}
+                        loading={isTableLoading}
+                        onChange={handleTableChange}
+                        showSorterTooltip={false}
+                        pagination={{
+                            total: jobList.length,
+                            showSizeChanger: true,
+                            showQuickJumper: true,
+                            showTotal: (total) => `${total} files`,
+                        }}
+                        rowSelection={{
+                            selectedRowKeys,
+                            columnTitle: "Select Search",
+                            type: "checkbox",
+                            onChange: (selectedRowKeys, selectedRows) => {
+                                setSelectedRowKeys(selectedRowKeys);
+                                setSelectedRows(selectedRows);
+                            },
+                        }}
+                    ></Table>
+                </Space>
+            </Modal>
+        </>
+    );
+}
+
 function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLoading }) {
     const { jobSettings, setJobSettings } = jobSettingsState;
     const { jobResults, setJobResults } = jobResultsState;
-    const [isModalVisible, setIsModalVisible] = useState(false);
+
+    const [isFileModalVisible, setIsFileModalVisible] = useState(false);
     const [replacedUrl, setReplacedUrl] = useState(null);
     const [replaceEvalCheck, setReplacedEvalCheck] = useState(false);
     const [form] = Form.useForm();
+
+    const [isImportModalVisible, setIsImportModalVisible] = useState(false);
+    const [importGenFile, setImportGenFile] = useState(false);
+
+    const importDataMapping = {}
+    jobSettings.genUrl.forEach(url => {
+        const genKey = url.split('/').pop();
+        importDataMapping[genKey] = {
+            min: 0,
+            jobs: []
+        }
+    });
+    const [importData, setImportData] = useState(importDataMapping);
+
+
     async function initParams(jobID, newJobSettings) {
         let startingGenID = jobResults.length;
         const allPromises = [];
-        for (let i = 0; i < newJobSettings.genFile_random_generated; i++) {
-            const randomIndex = Math.floor(Math.random() * newJobSettings.genUrl.length);
-            newJobSettings["genFile_" + newJobSettings.genKeys[randomIndex]] += 1;
-        }
         for (const genKey of newJobSettings.genKeys) {
             let genFile;
             await downloadS3(
@@ -447,7 +679,45 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
                     allParams.push(result.params)
                 }
             });
-            for (let i = 0; i < newJobSettings["genFile_" + genKey]; i++) {
+            let newItems = jobSettings["genFile_" + genKey];
+            // add the imported data
+            if (importData[genKey] && importData[genKey].jobs) {
+                newItems -= importData[genKey].min;
+                for (const importJob of importData[genKey].jobs) {
+                    for (const param of importJob.resultList) {
+                        allParams.push(JSON.parse(param.params))
+                        console.log(param.params)
+                        const paramSet = {
+                            id: jobID + "_" + startingGenID,
+                            JobID: jobID.toString(),
+                            GenID: startingGenID.toString(),
+                            generation: maxGen + 1,
+                            survivalGeneration: null,
+                            genUrl: newJobSettings.genUrl[genKey],
+                            evalUrl: newJobSettings.evalUrl,
+                            evalResult: null,
+                            live: true,
+                            owner: jobSettings.owner,
+                            params: param.params,
+                            score: null,
+                            expirationTime: null,
+                            errorMessage: null,
+                        };
+        
+                        allPromises.push(
+                            API.graphql(
+                                graphqlOperation(createGenEvalParam, {
+                                    input: paramSet,
+                                })
+                            )
+                                .then()
+                                .catch((err) => console.log(err))
+                        );
+                        startingGenID ++
+                    }
+                }
+            }
+            for (let i = 0; i < newItems; i++) {
                 const paramSet = {
                     id: jobID + "_" + startingGenID,
                     JobID: jobID.toString(),
@@ -523,6 +793,9 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
             return;
         }
         const newJobSettings = form.getFieldsValue();
+        console.log('....', newJobSettings)
+        console.log('~~~~', importGenFile)
+
         newJobSettings.description = jobSettings.description;
         newJobSettings.genUrl = {};
         newJobSettings.genKeys = jobSettings.genUrl.map((genUrl) => {
@@ -580,7 +853,15 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
         jobSettings.population_size = newJobSettings.population_size;
         jobSettings.tournament_size = newJobSettings.tournament_size;
         jobSettings.mutation_sd = newJobSettings.mutation_sd;
+        for (const key in importData) {
+            importData[key] = {
+                min: 0,
+                jobs: []
+            }
+        }
         setJobSettings(jobSettings);
+        setImportData(importData)
+
     }
     function handleFinishFail() {
         notify('Unable to Resume Search', 'Please check for Errors in form!', true);
@@ -680,12 +961,16 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
     const showModalGen = (url) => {
         setReplacedUrl(url);
         setReplacedEvalCheck(false);
-        setIsModalVisible(true);
+        setIsFileModalVisible(true);
     };
     const showModalEval = () => {
         setReplacedUrl("");
         setReplacedEvalCheck(true);
-        setIsModalVisible(true);
+        setIsFileModalVisible(true);
+    };
+    const showModalImport = (genFile) => {
+        setIsImportModalVisible(true);
+        setImportGenFile(genFile)
     };
 
     const deleteGenFile = async (url) => {
@@ -854,7 +1139,7 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
                                 <InputNumber className="form-text" disabled />
                             </Form.Item>
                         </Tooltip>
-                        {jobSettings.genUrl.map((genUrl) => {
+                        {/* {jobSettings.genUrl.map((genUrl) => {
                             const genFile = genUrl.split("/").pop();
                             return <div key={"genFile_" + genFile}>
                                 <Form.Item label={genFile + ' - existing'} name={"genFile_existing_" + genFile} key={"genFile_existing_" + genFile}>
@@ -864,7 +1149,35 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
                                     <InputNumber min={formInitialValues["genFile_" + genFile]} onChange={onNumChange}/>
                                 </Form.Item>
                                 </div>;
+                        })} */}
+                        {jobSettings.genUrl.map((genUrl) => {
+                            const genFile = genUrl.split("/").pop();
+                            return (<div key={"genFile_" + genFile}>
+                                    <Form.Item label={genFile + ' - existing'} name={"genFile_existing_" + genFile} key={"genFile_existing_" + genFile}>
+                                        <InputNumber className="form-text" disabled/>
+                                    </Form.Item>
+                                    <Form.Item label={genFile} key={"genFile_" + genFile}>
+                                        <Form.Item
+                                            className="sub-form-item"
+                                            key="form_input"
+                                            name={"genFile_" + genFile}
+                                            rules={[...rules, { validator: checkGenFile }]}
+                                        >
+                                            <InputNumber name={"genFile_" + genFile} min={importData[genFile].min + formInitialValues["genFile_" + genFile]} onChange={onNumChange} />
+                                        </Form.Item>
+                                        <Form.Item key="import_btn" className="sub-form-item">
+                                            <Button onClick={()=>{showModalImport(genFile)}}>import</Button>
+                                        </Form.Item>
+                                        <Form.Item key="import_searches" className="sub-form-item">
+                                            {importData[genFile].jobs.map(job=>{
+                                                return <p key={job.id}>{job.description}: {job.resultCount}</p>
+                                            })}
+                                        </Form.Item>
+                                    </Form.Item>
+                                </div>
+                            );
                         })}
+
                         <Divider/>
                         <Tooltip placement="topLeft" title={helpText.tournament_size}>
                             <Form.Item label="Tournament Size" name="tournament_size" rules={[...rules,{ validator: checkTournament }]}>
@@ -889,12 +1202,20 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
             </Form>
             <FileSelectionModal
                 form = {form}
-                isModalVisibleState={{ isModalVisible, setIsModalVisible }}
+                isFileModalVisibleState={{ isFileModalVisible, setIsFileModalVisible }}
                 jobSettingsState={{ jobSettings, setJobSettings }}
                 jobResultsState={{ jobResults, setJobResults }}
                 replacedUrl={replacedUrl}
                 replaceEvalCheck={replaceEvalCheck}
             />
+            <ParamImportModal
+                form={form}
+                jobSettings={jobSettings}
+                isImportModalVisibleState={{ isImportModalVisible, setIsImportModalVisible }}
+                importDataState={{ importData, setImportData }}
+                genFile={importGenFile}
+            />
+            <button id='triggerNumGenChange' className='hidden-elm' onClick={onNumGenChange}></button>
         </>
     );
 }

@@ -146,7 +146,6 @@ async function getData(jobID, userID, setJobSettings, setJobResults, setIsLoadin
     )
         .then((queryResult) => {
             const jobData = queryResult.data.getJob;
-            console.log(jobData)
             if (jobData.run_settings) {
                 const runSettings = JSON.parse(jobData.run_settings);
                 jobData.num_gen = runSettings.num_gen;
