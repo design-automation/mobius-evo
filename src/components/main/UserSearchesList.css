@@ -1,0 +1,28 @@
+.explorations-container {
+  width: 100%;
+  height: 100%;
+  padding: 5em 0em;
+  box-sizing: border-box;
+}
+
+.ant-tree-treenode {
+  width: 100%;
+}
+
+.ant-tree-node-content-wrapper {
+  width: 100%;
+}
+
+.ant-tree .ant-tree-switcher-noop {
+  width: 0;
+}
+
+.ant-tree-title {
+  cursor: default;
+}
+
+.disabled-link {
+  pointer-events: none;
+  cursor: not-allowed;
+  color: rgba(1,1,1,0.3);
+}

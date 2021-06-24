@@ -2,14 +2,12 @@ import React, { useEffect, useState, useContext } from "react";
 import * as QueryString from "query-string";
 import { Space, Row, Button, Descriptions, Badge, Tree, Spin, Drawer, Tag, Popconfirm, Menu, Table } from "antd";
 import { Link } from "react-router-dom";
-import { PlusSquareOutlined, SyncOutlined, CheckCircleOutlined, MinusCircleOutlined, ClockCircleOutlined } from "@ant-design/icons";
 import { API, graphqlOperation } from "aws-amplify";
 import { listJobs } from "../../graphql/queries";
-import { deleteJob } from "../../graphql/mutations";
-import { AuthContext } from "../../Contexts";
 import Help from './utils/Help';
-import "./Explorations.css";
+import "./GuestSearchesList.css";
 import {compareAscend, compareDescend} from './utils/UtilFunctions'
+import { AuthContext } from "../../Contexts";
 
 function JobTable({ isDataLoadingState, jobDataState }) {
     const { isDataLoading, setIsDataLoading } = isDataLoadingState;
@@ -98,42 +96,8 @@ function JobTable({ isDataLoadingState, jobDataState }) {
                     <p key='msd'>{`mutation standard deviation: ${mutation_sd}`}</p>
                 </>);
             }
-        },
-        {
-            title: "Action",
-            dataIndex: "action",
-            key: "action",
-            fixed: "right",
-            width: 120,
-            render: (text, record) => 
-            <button className='text-btn'
-                onClick={() => deleteJobAndParams(record.id, record.owner)}
-            >delete</button>
-            ,
-        },
+        }
     ];
-
-    async function deleteJobAndParams(jobID, userID) {
-        setIsDataLoading(true);
-        await API.graphql(
-            graphqlOperation(deleteJob, {
-                input: { id: jobID },
-            })
-        ).catch((err) => {
-            throw err;
-        })
-        setjobData((jobData) => {
-            const newjobData = [];
-            jobData.forEach(rowObj => {
-                if (rowObj.id === jobID) {
-                    return;
-                }
-                newjobData.push(rowObj);
-            });
-            return newjobData;
-        })
-        setIsDataLoading(false);
-    }
 
     const handleTableChange = (pagination, filters, sorter) => {
         const [field, order] = [sorter.field, sorter.order];
@@ -177,11 +141,13 @@ function JobTable({ isDataLoadingState, jobDataState }) {
     </>);
 }
 
-function Explorations() {
+function GuestSearchesList() {
     const { cognitoPayload } = useContext(AuthContext);
     const [isDataLoading, setIsDataLoading] = useState(true);
     const [dataView, setDataView] = useState("tree");
     const [jobData, setjobData] = useState([]);
+
+    console.log(cognitoPayload)
 
     const compareDescend = (a, b) => {
         if (a > b) {
@@ -193,15 +159,9 @@ function Explorations() {
         }
     };
 
-    const refreshList = (cognitoPayloadSub, setjobData, setIsDataLoading) => {
+    const refreshList = (setjobData, setIsDataLoading) => {
         API.graphql(
-            graphqlOperation(listJobs, {
-                filter: {
-                    userID: {
-                        eq: cognitoPayloadSub,
-                    },
-                },
-            })
+            graphqlOperation(listJobs),
         )
             .then((queriedResults) => {
                 const jobList = queriedResults.data.listJobs.items;
@@ -228,8 +188,8 @@ function Explorations() {
             .catch((error) => console.log(error));
     }
     useEffect(() => {
-        refreshList(cognitoPayload.sub, setjobData, setIsDataLoading)
-    }, [cognitoPayload]);
+        refreshList(setjobData, setIsDataLoading)
+    }, []);
     return (
         <div className="explorations-container">
             <Menu
@@ -247,4 +207,4 @@ function Explorations() {
     );
 }
 
-export default Explorations;
+export default GuestSearchesList;

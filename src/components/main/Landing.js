@@ -7,6 +7,7 @@ import { AmplifyAuthenticator, AmplifySignIn, AmplifySignUp } from "@aws-amplify
 import { Space, Collapse, Row, Col, Typography, Button, Descriptions, Checkbox, Affix } from "antd";
 import { Link } from 'react-router-dom';
 import { UploadOutlined } from "@ant-design/icons";
+import awsExports from '../../aws-exports'
 
 function Landing() {
     function NotAuthenticated() {
@@ -54,7 +55,17 @@ function Landing() {
                 <AmplifySignIn slot="sign-in" usernameAlias="email" headerText="Get started!" hideSignUp/>
             </AmplifyAuthenticator>
         );
-    } 
+    }
+    function Authenticated() {
+        if (awsExports.aws_user_files_s3_bucket && awsExports.aws_user_files_s3_bucket_region) {
+            const dashboardName = 'evoInfo' + awsExports.aws_user_files_s3_bucket.split('userfiles131353')[1];
+            return <Typography.Link 
+                href={`https://console.aws.amazon.com/cloudwatch/home?region=${awsExports.aws_user_files_s3_bucket_region}#dashboards:name=${dashboardName}`}>
+                Monitor Möbius Evolver data usage
+            </Typography.Link>
+
+        }
+    }
     function LandingSection() {
         return (
             <section>
@@ -258,7 +269,7 @@ function Landing() {
                     <LandingSection />
                 </Col>
                 <Col md={12}>
-                    <Affix className="login-container">{!useContext(AuthContext).cognitoPayload ? <NotAuthenticated /> : null}</Affix>
+                    <Affix className="login-container">{!useContext(AuthContext).cognitoPayload ? <NotAuthenticated /> : <Authenticated/>}</Affix>
                 </Col>
             </Row>
         </div>

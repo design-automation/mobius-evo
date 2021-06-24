@@ -1,50 +1,15 @@
-import React, { useState, useContext, useEffect } from "react";
-import "./JobForm.css";
-import * as QueryString from "query-string";
-import { v4 as uuidv4 } from "uuid";
-import { API, graphqlOperation } from "aws-amplify";
-import { createJob, createGenEvalParam } from "../../graphql/mutations";
-import { generationsByJobId, listJobs } from "../../graphql/queries";
+import React, { useEffect, useState } from "react";
+import { Form, Space, Button, Divider, InputNumber, Upload, message, Tag, Table, Modal, Row, Collapse, Tooltip, notification, Descriptions } from "antd";
 import { uploadS3, listS3, getS3Url, downloadS3 } from "../../amplify-apis/userFiles";
 import { UploadOutlined } from "@ant-design/icons";
-import { AuthContext } from "../../Contexts";
-import {
-    Form,
-    Input,
-    InputNumber,
-    Button,
-    Tooltip,
-    Table,
-    Radio,
-    Checkbox,
-    Upload,
-    message,
-    Tag,
-    Space,
-    Spin,
-    Row,
-    Collapse,
-    notification,
-    Modal,
-    Slider,
-    Divider,
-    Col,
-} from "antd";
+import { API, graphqlOperation } from "aws-amplify";
+import { createGenEvalParam, updateGenEvalParam, updateJob } from "../../graphql/mutations";
+import "./UserSearchResult_resume.css";
 import Help from "./utils/Help";
 import helpJSON from "../../assets/help/help_text_json";
 import {compareAscend, compareDescend} from './utils/UtilFunctions'
+import { generationsByJobId, listJobs } from "../../graphql/queries";
 
-const testDefault = {
-    description: `new test`,
-    num_gen: 5,
-    max_designs: 100,
-    population_size: 20,
-    tournament_size: 10,
-    mutation_sd: 0.05,
-    expiration_days: 30,
-    genFile_random_generated: 20,
-    genFile_total_items: 20,
-};
 const notify = (title, text, isWarn = false) => {
     if (isWarn) {
         notification.error({
@@ -59,15 +24,16 @@ const notify = (title, text, isWarn = false) => {
     });
 };
 
-function FileSelectionModal({ form, isFileModalVisibleState, genFilesState, setEvalFile, replacedUrl, replaceEvalCheck, importDataState }) {
+function FileSelectionModal({form, isFileModalVisibleState, jobSettingsState, jobResultsState, replacedUrl, replaceEvalCheck }) {
     const [s3Files, setS3Files] = useState([]);
     const [uploadedFiles, setUploadedFiles] = useState([]);
     const [isTableLoading, setIsTableLoading] = useState(true);
-    const { genFiles, setGenFiles } = genFilesState;
     const { isFileModalVisible, setIsFileModalVisible } = isFileModalVisibleState;
-    const { importData, setImportData } = importDataState;
+    const { jobSettings, setJobSettings } = jobSettingsState;
+    const { jobResults, setJobResults } = jobResultsState;
     const [selectedRows, setSelectedRows] = useState([]);
     const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+
 
     const handleOk = async () => {
         if (!replaceEvalCheck) {
@@ -77,49 +43,117 @@ function FileSelectionModal({ form, isFileModalVisibleState, genFilesState, setE
         }
     };
     const handleGenOk = async () => {
-        let okCheck = false;
+        const allPromises = [];
         const formUpdate = {};
         for (const selectedRow of selectedRows) {
             const newFile = selectedRow.filename;
+            if (!newFile) {
+                continue;
+            }
             let newUrl = "";
             await getS3Url(
                 `files/gen/${newFile}`,
                 (s3Url) => (newUrl = s3Url),
                 () => {}
             );
+            let okCheck = false;
             if (!replacedUrl) {
-                if (genFiles.indexOf(newUrl) !== -1) {
-                    notify("Unable to add gen file!", "Search already contains Gen file to be added.");
+                if (jobSettings.genUrl.indexOf(newUrl) !== -1) {
+                    notify('Unable to add gen file!', 'Search already contains Gen file to be added.')
                     continue;
                 }
-                genFiles.push(newUrl);
+                jobSettings.genUrl.push(newUrl);
                 okCheck = true;
             } else {
-                const genIndex = genFiles.indexOf(replacedUrl);
+                const genIndex = jobSettings.genUrl.indexOf(replacedUrl);
                 if (genIndex !== -1) {
-                    genFiles.splice(genIndex, 1, newUrl);
+                    jobSettings.genUrl.splice(genIndex, 1, newUrl);
                     okCheck = true;
                 }
             }
-            formUpdate["genFile_" + newFile] = 0;
-            importData[newFile] = {
-                min: 0,
-                jobs: []
-            };
+            // let expiration = 86400;
+            // if (jobSettings.expiration) {
+            //     expiration = jobSettings.expiration;
+            // }
+            // const expiration_time = Math.round(Date.now() / 1000) + expiration;
+
+            if (okCheck) {
+                setJobSettings(jobSettings);
+                let newID = jobResults.length;
+                const newJobs = [];
+                let newLiveCount = 0;
+                jobResults
+                    .filter((result) => result.genUrl === replacedUrl && result.live === true)
+                    .forEach((result) => {
+                        allPromises.push(
+                            API.graphql(
+                                graphqlOperation(updateGenEvalParam, {
+                                    input: {
+                                        id: result.id,
+                                        JobID: result.JobID,
+                                        GenID: result.GenID,
+                                        live: false,
+                                        expirationTime: null,
+                                    },
+                                })
+                            )
+                                .then()
+                                .catch((err) => console.log(err))
+                        );
+                        const newParam = {
+                            id: result.JobID + "_" + newID,
+                            JobID: result.JobID,
+                            GenID: newID,
+                            generation: result.generation,
+                            survivalGeneration: null,
+                            genUrl: newUrl,
+                            evalUrl: result.evalUrl,
+                            evalResult: null,
+                            live: true,
+                            params: result.params,
+                            score: null,
+                            owner: result.owner,
+                            expirationTime: null,
+                            errorMessage: null,
+                        };
+                        allPromises.push(
+                            API.graphql(
+                                graphqlOperation(createGenEvalParam, {
+                                    input: newParam,
+                                })
+                            )
+                                .then()
+                                .catch((err) => console.log(err))
+                        );
+                        result.live = false;
+                        newJobs.push(newParam);
+                        newID += 1;
+                        newLiveCount++;
+                    });
+                allPromises.push(
+                    API.graphql(
+                        graphqlOperation(updateJob, {
+                            input: jobSettings,
+                        })
+                    )
+                        .then()
+                        .catch((err) => console.log(err))
+                );
+                formUpdate["genFile_existing_" + newFile] = newLiveCount;
+                formUpdate["genFile_" + newFile] = 0;
+                setJobResults(jobResults.concat(newJobs));
+            }
         }
-        if (okCheck) {
-            setGenFiles(genFiles);
-            form.setFieldsValue(formUpdate);
-        }
-        setSelectedRows([]);
-        setSelectedRowKeys([]);
-        setImportData(importData)
+        await Promise.all(allPromises);
+        form.setFieldsValue(formUpdate);
+        setSelectedRows([])
+        setSelectedRowKeys([])
         setIsFileModalVisible(false);
     };
     const handleEvalOk = async () => {
         if (selectedRows.length === 0 || !selectedRows[0].filename) {
-            setSelectedRows([]);
-            setSelectedRowKeys([]);
+            setSelectedRows([])
+            setSelectedRowKeys([])
             setIsFileModalVisible(false);
             return;
         }
@@ -130,15 +164,82 @@ function FileSelectionModal({ form, isFileModalVisibleState, genFilesState, setE
             (s3Url) => (newUrl = s3Url),
             () => {}
         );
-        setSelectedRows([]);
-        setSelectedRowKeys([]);
-        setEvalFile(newUrl);
+        jobSettings.evalUrl = newUrl;
+        // let expiration = 86400;
+        // if (jobSettings.expiration) {
+        //     expiration = jobSettings.expiration;
+        // }
+        // const expiration_time = Math.round(Date.now() / 1000) + expiration;
+        const allPromises = [];
+
+        setJobSettings(jobSettings);
+        let newID = jobResults.length;
+        const newJobs = [];
+        jobResults
+            .filter((result) => result.live === true)
+            .forEach((result) => {
+                allPromises.push(
+                    API.graphql(
+                        graphqlOperation(updateGenEvalParam, {
+                            input: {
+                                id: result.id,
+                                JobID: result.JobID,
+                                GenID: result.GenID,
+                                live: false,
+                                expirationTime: null,
+                            },
+                        })
+                    )
+                        .then()
+                        .catch((err) => console.log(err))
+                );
+                const newParam = {
+                    id: result.JobID + "_" + newID,
+                    JobID: result.JobID,
+                    GenID: newID,
+                    generation: result.generation,
+                    survivalGeneration: null,
+                    genUrl: result.genUrl,
+                    evalUrl: newUrl,
+                    evalResult: null,
+                    live: true,
+                    params: result.params,
+                    score: null,
+                    owner: result.owner,
+                    expirationTime: null,
+                    errorMessage: null,
+                };
+                allPromises.push(
+                    API.graphql(
+                        graphqlOperation(createGenEvalParam, {
+                            input: newParam,
+                        })
+                    )
+                        .then()
+                        .catch((err) => console.log(err))
+                );
+                result.live = false;
+                newJobs.push(newParam);
+                newID += 1;
+            });
+        allPromises.push(
+            API.graphql(
+                graphqlOperation(updateJob, {
+                    input: jobSettings,
+                })
+            )
+                .then()
+                .catch((err) => console.log(err))
+        );
+        setJobResults(jobResults.concat(newJobs));
+
+        await Promise.all(allPromises);
+        setSelectedRows([])
+        setSelectedRowKeys([])
         setIsFileModalVisible(false);
     };
 
     const handleCancel = () => {
-        setSelectedRows([]);
-        setSelectedRowKeys([]);
         setIsFileModalVisible(false);
     };
 
@@ -167,20 +268,21 @@ function FileSelectionModal({ form, isFileModalVisibleState, genFilesState, setE
                     ) : null}
                 </Space>
             ),
-        },
+        }
     ];
+
     const rowSelection = {
         selectedRowKeys,
-        columnTitle: "Select File",
+        columnTitle: 'Select File',
         onChange: (selectedRowKeys, selectedRows) => {
-            setSelectedRowKeys(selectedRowKeys);
-            setSelectedRows(selectedRows);
-        },
+            setSelectedRowKeys(selectedRowKeys)
+            setSelectedRows(selectedRows)
+        }
     };
     if (replaceEvalCheck || replacedUrl) {
-        rowSelection.type = "radio";
+        rowSelection.type = 'radio';
     } else {
-        rowSelection.type = "checkbox";
+        rowSelection.type = 'checkbox';
     }
 
     const listS3files = () => {
@@ -249,7 +351,7 @@ function FileSelectionModal({ form, isFileModalVisibleState, genFilesState, setE
         <>
             <Modal title="Select File" visible={isFileModalVisible} onOk={handleOk} onCancel={handleCancel}>
                 <Space direction="vertical" size="middle" style={{ width: "100%" }}>
-                    <FileUpload uploadType={replaceEvalCheck ? "eval" : "gen"} />
+                    <FileUpload uploadType={replaceEvalCheck?"eval":"gen"} />
                     <Table
                         dataSource={s3Files}
                         columns={columns}
@@ -270,7 +372,8 @@ function FileSelectionModal({ form, isFileModalVisibleState, genFilesState, setE
     );
 }
 
-function ParamImportModal({ form, isImportModalVisibleState, genFile, cognitoPayloadSub, importDataState}) {
+
+function ParamImportModal({ form, jobSettings, isImportModalVisibleState, genFile, importDataState}) {
     const [isTableLoading, setIsTableLoading] = useState(true);
     const [jobList, setJobList] = useState([]);
     const { isImportModalVisible, setIsImportModalVisible } = isImportModalVisibleState;
@@ -306,23 +409,16 @@ function ParamImportModal({ form, isImportModalVisibleState, genFile, cognitoPay
 
             let totalCount = importData[genFile].min;
             for (let i in fieldVals) {
-                if (i.startsWith('genFile_') && i !== 'genFile_total_items' && i !== 'genFile_random_generated' && i !== "genFile_" + genFile) {
+                if (i.startsWith('genFile_') && i !== 'genFile_total_items' && i !== "genFile_" + genFile) {
                     totalCount += fieldVals[i];
                 }
             }
             fieldUpdate["genFile_" + genFile] = importData[genFile].min;
-            if (totalCount < fieldVals.population_size) {
-                fieldUpdate.genFile_random_generated = fieldVals.population_size - totalCount;
-                totalCount = fieldVals.population_size;
-            } else {
-                fieldUpdate.genFile_random_generated = 0;
-            }
             fieldUpdate.genFile_total_items = totalCount;
-            fieldUpdate.max_designs = totalCount + (fieldVals.num_gen - 1) * fieldVals.population_size;
-
             form.setFieldsValue(fieldUpdate)
         }
         setIsImportModalVisible(false);
+        document.getElementById('triggerNumGenChange').click();
     };
 
     const handleCancel = () => {
@@ -423,7 +519,7 @@ function ParamImportModal({ form, isImportModalVisibleState, genFile, cognitoPay
             graphqlOperation(listJobs, {
                 filter: {
                     userID: {
-                        eq: cognitoPayloadSub,
+                        eq: jobSettings.owner,
                     },
                 },
             })
@@ -432,6 +528,7 @@ function ParamImportModal({ form, isImportModalVisibleState, genFile, cognitoPay
                 const jobList = queriedResults.data.listJobs.items;
                 const queryPromises = [];
                 const jobData = jobList.map((data, index) => {
+                    if (data.id === jobSettings.id) { return null; }
                     let check = false;
                     data.genUrl.forEach(url => {
                         if (url.endsWith('/' + genFile)) {
@@ -467,7 +564,7 @@ function ParamImportModal({ form, isImportModalVisibleState, genFile, cognitoPay
             .catch((error) => console.log(error));
         return () => (isSubscribed = false);
     };
-    useEffect(listRelatedJobs, [cognitoPayloadSub, isImportModalVisible]); // Updates when new files are uploaded
+    useEffect(listRelatedJobs, [jobSettings, isImportModalVisible]); // Updates when new files are uploaded
 
     const handleTableChange = (pagination, filters, sorter) => {
         const [field, order] = [sorter.field, sorter.order];
@@ -511,63 +608,33 @@ function ParamImportModal({ form, isImportModalVisibleState, genFile, cognitoPay
     );
 }
 
-function SettingsForm({ currentStateManage }) {
-    const { cognitoPayload } = useContext(AuthContext);
-    const { currentState, setCurrentState } = currentStateManage;
-    const [form] = Form.useForm();
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [genFiles, setGenFiles] = useState([]);
-    const [evalFile, setEvalFile] = useState(null);
+function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLoading }) {
+    const { jobSettings, setJobSettings } = jobSettingsState;
+    const { jobResults, setJobResults } = jobResultsState;
 
     const [isFileModalVisible, setIsFileModalVisible] = useState(false);
     const [replacedUrl, setReplacedUrl] = useState(null);
     const [replaceEvalCheck, setReplacedEvalCheck] = useState(false);
+    const [form] = Form.useForm();
 
     const [isImportModalVisible, setIsImportModalVisible] = useState(false);
     const [importGenFile, setImportGenFile] = useState(false);
-    const [importData, setImportData] = useState({});
 
-
-    const showModalGen = (url) => {
-        setReplacedUrl(url);
-        setReplacedEvalCheck(false);
-        setIsFileModalVisible(true);
-    };
-    const showModalEval = () => {
-        setReplacedUrl("");
-        setReplacedEvalCheck(true);
-        setIsFileModalVisible(true);
-    };
-    const showModalImport = (genFile) => {
-        setIsImportModalVisible(true);
-        setImportGenFile(genFile)
-    };
-
-    const deleteGenFile = async (url) => {
-        const urlIndex = genFiles.indexOf(url);
-        if (urlIndex !== -1) {
-            genFiles.splice(urlIndex, 1);
-            setGenFiles(genFiles);
-            setCurrentState(!currentState);
+    const importDataMapping = {}
+    jobSettings.genUrl.forEach(url => {
+        const genKey = url.split('/').pop();
+        importDataMapping[genKey] = {
+            min: 0,
+            jobs: []
         }
-    };
+    });
+    const [importData, setImportData] = useState(importDataMapping);
 
-    async function initParams(jobID, jobSettings, importData) {
-        let startingGenID = 0;
+
+    async function initParams(jobID, newJobSettings) {
+        let startingGenID = jobResults.length;
         const allPromises = [];
-        const genUrls = {};
-        const genKeys = jobSettings.genUrl.map((url) => {
-            const key = url.split("/").pop();
-            genUrls[key] = url;
-            return key;
-        });
-        for (let i = 0; i < jobSettings.genFile_random_generated; i++) {
-            const randomIndex = Math.floor(Math.random() * jobSettings.genUrl.length);
-            jobSettings["genFile_" + genKeys[randomIndex]] += 1;
-        }
-
-        // for each of the gen file
-        for (const genKey of genKeys) {
+        for (const genKey of newJobSettings.genKeys) {
             let genFile;
             await downloadS3(
                 `files/gen/${genKey}`,
@@ -604,7 +671,14 @@ function SettingsForm({ currentStateManage }) {
             if (!params) {
                 continue;
             }
+            let maxGen = 1;
             const allParams = [];
+            jobResults.forEach((result) => {
+                maxGen = Math.max(maxGen, result.generation)
+                if (result.genUrl === newJobSettings.genUrl[genKey]) {
+                    allParams.push(result.params)
+                }
+            });
             let newItems = jobSettings["genFile_" + genKey];
             // add the imported data
             if (importData[genKey] && importData[genKey].jobs) {
@@ -612,14 +686,15 @@ function SettingsForm({ currentStateManage }) {
                 for (const importJob of importData[genKey].jobs) {
                     for (const param of importJob.resultList) {
                         allParams.push(JSON.parse(param.params))
+                        console.log(param.params)
                         const paramSet = {
                             id: jobID + "_" + startingGenID,
                             JobID: jobID.toString(),
                             GenID: startingGenID.toString(),
-                            generation: 1,
+                            generation: maxGen + 1,
                             survivalGeneration: null,
-                            genUrl: genUrls[genKey],
-                            evalUrl: jobSettings.evalUrl,
+                            genUrl: newJobSettings.genUrl[genKey],
+                            evalUrl: newJobSettings.evalUrl,
                             evalResult: null,
                             live: true,
                             owner: jobSettings.owner,
@@ -647,13 +722,13 @@ function SettingsForm({ currentStateManage }) {
                     id: jobID + "_" + startingGenID,
                     JobID: jobID.toString(),
                     GenID: startingGenID.toString(),
-                    generation: 1,
+                    generation: maxGen + 1,
                     survivalGeneration: null,
-                    genUrl: genUrls[genKey],
-                    evalUrl: jobSettings.evalUrl,
+                    genUrl: newJobSettings.genUrl[genKey],
+                    evalUrl: newJobSettings.evalUrl,
                     evalResult: null,
                     live: true,
-                    owner: jobSettings.owner,
+                    owner: newJobSettings.owner,
                     params: null,
                     score: null,
                     expirationTime: null,
@@ -661,10 +736,10 @@ function SettingsForm({ currentStateManage }) {
                 };
                 startingGenID++;
                 const itemParams = {};
-                let duplicateCount = 0;
 
-                // generate one set of parameters used for that Gen File
-                while (true) {
+                let duplicateCount = 0;
+                while (true){
+                    // generate the parameters used for that Gen File
                     for (const param of params) {
                         if (param.hasOwnProperty("step")) {
                             let steps = (param.max - param.min) / param.step;
@@ -698,8 +773,6 @@ function SettingsForm({ currentStateManage }) {
                     duplicateCount += 1;
                 }
                 paramSet.params = JSON.stringify(itemParams);
-
-                // add it to the database
                 allPromises.push(
                     API.graphql(
                         graphqlOperation(createGenEvalParam, {
@@ -715,140 +788,227 @@ function SettingsForm({ currentStateManage }) {
     }
 
     async function handleFinish() {
-        const jobID = uuidv4();
-        const jobSettings = form.getFieldsValue();
-        if (!genFiles || !evalFile) {
-            notify("Unable to Start Job", "Please select at least one Gen File and one Eval File!", true);
+        if (jobSettings.genUrl.length === 0) {
+            notify('Unable to Resume Search', 'Please add least one Gen File!', true);
             return;
         }
-        // jobSettings.expiration = jobSettings.expiration_days * 24 * 60 * 60;
-        setIsSubmitting(true);
+        const newJobSettings = form.getFieldsValue();
+        console.log('....', newJobSettings)
+        console.log('~~~~', importGenFile)
 
-        jobSettings.genUrl = genFiles;
-        jobSettings.evalUrl = evalFile;
-        await initParams(jobID, jobSettings, importData);
-        const jobParam = {
-            id: jobID,
-            userID: cognitoPayload.sub,
-            jobStatus: "inprogress",
-            owner: cognitoPayload.sub,
-            run: true,
-            evalUrl: jobSettings.evalUrl,
-            genUrl: jobSettings.genUrl,
-            expiration: null,
-            description: jobSettings.description,
-            history: null,
-            run_settings: JSON.stringify({
-                num_gen: jobSettings.num_gen,
-                max_designs: jobSettings.max_designs,
-                population_size: jobSettings.population_size,
-                tournament_size: jobSettings.tournament_size,
-                mutation_sd: jobSettings.mutation_sd,
-            }),
-
-            max_designs: null,
-            population_size: null,
-            tournament_size: null,
-            mutation_sd: null,
-            errorMessage: null,
-        };
-        API.graphql(
-            graphqlOperation(createJob, {
-                input: jobParam,
-            })
-        ).then(() => {
-            setIsSubmitting(false);
-            window.location.href = `/searches/search-results#${QueryString.stringify({ id: jobID })}`;
+        newJobSettings.description = jobSettings.description;
+        newJobSettings.genUrl = {};
+        newJobSettings.genKeys = jobSettings.genUrl.map((genUrl) => {
+            const genKey = genUrl.split("/").pop();
+            newJobSettings.genUrl[genKey] = genUrl;
+            return genKey;
         });
+        // newJobSettings.genKeys.forEach((key) => {
+        //     newJobSettings["genFile_" + key] -= jobResults.filter(
+        //         (result) => result.live === true && result.genUrl === newJobSettings.genUrl[key]
+        //     ).length;
+        // });
+        newJobSettings.evalUrl = jobSettings.evalUrl;
+        setIsLoading(true);
+        await initParams(jobSettings.id, newJobSettings);
+
+        jobSettings.jobStatus = "inprogress";
+        jobSettings.run = true;
+        jobSettings.num_gen = newJobSettings.num_gen;
+        jobSettings.max_designs = newJobSettings.max_designs;
+        jobSettings.population_size = newJobSettings.population_size;
+        jobSettings.tournament_size = newJobSettings.tournament_size;
+        jobSettings.mutation_sd = newJobSettings.mutation_sd;
+        API.graphql(
+            graphqlOperation(updateJob, {
+                input: {
+                    id: jobSettings.id,
+                    description: jobSettings.description,
+                    jobStatus: "inprogress",
+                    run: true,
+                    expiration: null,
+                    run_settings: JSON.stringify({
+                        num_gen: newJobSettings.num_gen,
+                        max_designs: newJobSettings.max_designs,
+                        population_size: newJobSettings.population_size,
+                        tournament_size: newJobSettings.tournament_size,
+                        mutation_sd: newJobSettings.mutation_sd,
+                    }),
+                    max_designs: null,
+                    population_size: null,
+                    tournament_size: null,
+                    mutation_sd: null,
+                },
+            })
+        )
+            .then(() => {
+                setJobResults([]);
+                getData(jobSettings.id, jobSettings.owner, setJobSettings, setJobResults, setIsLoading, () => setIsLoading(false)).catch((err) =>
+                    console.log(err)
+                );
+            })
+            .catch((err) => console.log(err));
+        // jobSettings.expiration = newJobSettings.expiration;
+        jobSettings.max_designs = newJobSettings.max_designs;
+        jobSettings.population_size = newJobSettings.population_size;
+        jobSettings.tournament_size = newJobSettings.tournament_size;
+        jobSettings.mutation_sd = newJobSettings.mutation_sd;
+        for (const key in importData) {
+            importData[key] = {
+                min: 0,
+                jobs: []
+            }
+        }
+        setJobSettings(jobSettings);
+        setImportData(importData)
+
     }
     function handleFinishFail() {
-        notify("Unable to Start Job", "Please check for Errors in form!", true);
+        notify('Unable to Resume Search', 'Please check for Errors in form!', true);
     }
-    const formInitialValues = testDefault;
-
     function onNumGenChange() {
         setTimeout(() => {
-            const fieldValues = form.getFieldsValue();
+            const fieldValues = form.getFieldsValue()
+            let livePop = jobResults.filter(r => r.live).length;
+            let firstGenPop = fieldValues.genFile_total_items - livePop;
+
+            // total initial items number is smaller/equal to current live size => new first gen pop = new gen num * pop size
+            if (firstGenPop <= 0) {
+                firstGenPop = livePop;
+            }
+
+            let newDesigns = firstGenPop;
+            livePop += firstGenPop;
+
+            for (let i = 1; i < fieldValues.new_gens; i++) {
+                if (livePop > fieldValues.population_size) {
+                    livePop = fieldValues.population_size
+                }
+                newDesigns += livePop;
+                livePop += livePop;
+            }
+
             form.setFieldsValue({
-                max_designs: fieldValues.genFile_total_items + (fieldValues.num_gen - 1) * fieldValues.population_size,
-            });
-        }, 0);
+                max_designs: jobResults.length + newDesigns,
+                new_designs: newDesigns
+            })
+        },0)
     }
-    function onPopChange() {
+    function onPopChange(e) {
         onNumChange(null);
     }
-    function onNumChange() {
+    function onNumChange(e) {
         setTimeout(() => {
-            const starting_population = Number(form.getFieldValue("population_size"));
             let totalCount = 0;
-            genFiles.forEach((genUrl) => {
+            const formVal = form.getFieldsValue();
+            jobSettings.genUrl.forEach((genUrl) => {
                 const genFile = genUrl.split("/").pop();
-                const inpID = "genFile_" + genFile;
-                totalCount += Number(form.getFieldValue(inpID));
+                totalCount += Number(formVal["genFile_" + genFile]) + Number(formVal["genFile_existing_" + genFile]);
             });
-            let countDiff = starting_population - totalCount;
-            const formUpdate = { genFile_total_items: totalCount < starting_population ? starting_population : totalCount };
-            if (countDiff < 0) {
-                countDiff = 0;
-            }
-            formUpdate["genFile_random_generated"] = countDiff;
+            const formUpdate = { genFile_total_items: totalCount };
             form.setFieldsValue(formUpdate);
-
             onNumGenChange();
         }, 0);
     }
     function checkTournament(_, value) {
-        const popVal = form.getFieldValue("population_size");
+        const popVal = form.getFieldValue('population_size');
         if (value >= popVal * 2) {
-            return Promise.reject(new Error("Tournament size must be smaller than 2 * population_size!"));
+            return Promise.reject(new Error('Tournament size must be smaller than 2 * population_size!'));
         }
         return Promise.resolve();
     }
-
     function checkGenFile(_) {
         const formVal = form.getFieldsValue();
         let totalCount = 0;
-        genFiles.forEach((genUrl) => {
+        jobSettings.genUrl.forEach((genUrl) => {
             const genFile = genUrl.split("/").pop();
-            const inpID = "genFile_" + genFile;
-            totalCount += Number(formVal[inpID]);
+            totalCount += Number(formVal["genFile_" + genFile]) + Number(formVal["genFile_existing_" + genFile]);
         });
-        // if (totalCount > formVal.max_designs) {
-        //     return Promise.reject(new Error("Total number of genFile parameters cannot be higher than max number of designs"));
-        // }
+        if ((totalCount- formInitialValues.initial_live_items) > formVal.new_designs) {
+            return Promise.reject(new Error('Total number of new genFile parameters cannot be higher than max number of new designs'));
+        }
         return Promise.resolve();
     }
+    const formInitialValues = {
+        max_designs: jobResults.length + jobSettings.population_size * 5,
+        new_gens: 5,
+        new_designs: jobSettings.population_size * 5,
+        population_size: jobSettings.population_size,
+        tournament_size: jobSettings.tournament_size,
+        mutation_sd: jobSettings.mutation_sd,
 
-    const genExtra = (part) => <Help page="start_new_job_page" part={part}></Help>;
-    let helpText = {};
-    try {
-        helpText = helpJSON.hover.start_new_job_page;
-    } catch (ex) {}
-    const rules = [{ required: true }];
-
-    const genTableData = genFiles.map((genUrl) => {
-        const genFile = genUrl.split("/").pop();
-        const tableEntry = {
-            genUrl: genUrl,
-            genFile: genFile,
-            fileAction: genUrl,
-        };
-        return tableEntry;
-    });
-    const evalTableData = [];
-    if (evalFile) {
-        evalTableData.push({
-            evalUrl: evalFile,
-            evalFile: evalFile.split("/").pop(),
-            fileAction: evalFile,
-        });
+        genFile_total_items: jobSettings.population_size,
+        initial_live_items : 0
+    };
+    if (jobSettings.jobStatus === "cancelled") {
+        formInitialValues.max_designs = jobSettings.max_designs;
+        formInitialValues.new_designs = 0;
     }
+    jobSettings.genUrl.forEach((url) => {
+        const genFile = url.split("/").pop();
+        formInitialValues["genFile_" + genFile] = 0;
+        formInitialValues["genFile_existing_" + genFile] = 0;
+    });
+    jobResults.forEach((result) => {
+        if (!result.live) {
+            return;
+        }
+        const genFile = result.genUrl.split("/").pop();
+        formInitialValues["genFile_existing_" + genFile] += 1;
+        formInitialValues.initial_live_items += 1;
+    });
+
+    const showModalGen = (url) => {
+        setReplacedUrl(url);
+        setReplacedEvalCheck(false);
+        setIsFileModalVisible(true);
+    };
+    const showModalEval = () => {
+        setReplacedUrl("");
+        setReplacedEvalCheck(true);
+        setIsFileModalVisible(true);
+    };
+    const showModalImport = (genFile) => {
+        setIsImportModalVisible(true);
+        setImportGenFile(genFile)
+    };
+
+    const deleteGenFile = async (url) => {
+        const urlIndex = jobSettings.genUrl.indexOf(url);
+        if (urlIndex !== -1) {
+            jobSettings.genUrl.splice(urlIndex, 1);
+            await API.graphql(
+                graphqlOperation(updateJob, {
+                    input: jobSettings,
+                })
+            )
+                .then()
+                .catch((err) => console.log(err));
+            setJobSettings(null);
+            setJobSettings(jobSettings);
+        }
+    };
+
+    if (!jobID || !jobSettings) {
+        return <></>;
+    }
+
     const genTableColumns = [
         {
             title: "Gen File",
             dataIndex: "genFile",
             key: "genFile",
             defaultSortOrder: "ascend",
+        },
+        {
+            title: "Total Items",
+            dataIndex: "numItems",
+            key: "numItems",
+        },
+        {
+            title: "Live Items",
+            dataIndex: "liveItems",
+            key: "liveItems",
         },
         {
             title: "Action",
@@ -867,11 +1027,32 @@ function SettingsForm({ currentStateManage }) {
             ),
         },
     ];
+    const genTableData = jobSettings.genUrl.map((genUrl) => {
+        const genFile = genUrl.split("/").pop();
+        const tableEntry = {
+            genUrl: genUrl,
+            genFile: genFile,
+            numItems: jobResults.filter((result) => result.genUrl === genUrl).length,
+            liveItems: jobResults.filter((result) => result.genUrl === genUrl && result.live === true).length,
+            fileAction: genUrl,
+        };
+        return tableEntry;
+    });
     const evalTableColumns = [
         {
             title: "Eval File",
             dataIndex: "evalFile",
             key: "evalFile",
+        },
+        {
+            title: "Total Items",
+            dataIndex: "numItems",
+            key: "numItems",
+        },
+        {
+            title: "Live Items",
+            dataIndex: "liveItems",
+            key: "liveItems",
         },
         {
             title: "Action",
@@ -885,70 +1066,96 @@ function SettingsForm({ currentStateManage }) {
         },
     ];
 
+    const evalTableData = [
+        {
+            evalUrl: jobSettings.evalUrl,
+            evalFile: jobSettings.evalUrl.split("/").pop(),
+            numItems: jobResults.filter((result) => result.evalUrl === jobSettings.evalUrl).length,
+            liveItems: jobResults.filter((result) => result.evalUrl === jobSettings.evalUrl && result.live === true).length,
+            fileAction: jobSettings.evalUrl,
+        },
+    ];
+    const genExtra = (part) => <Help page="result_page" part={part}></Help>;
+
+    let helpText = {};
+    try {
+        helpText = helpJSON.hover.result_page;
+    } catch (ex) {}
+
+    const rules = [{required: true}]
     return (
         <>
-            <Spin spinning={isSubmitting} tip="Starting Job...">
-                <Form
-                    name="jobSettings"
-                    onFinish={handleFinish}
-                    onFinishFailed={handleFinishFail}
-                    scrollToFirstError={true}
-                    requiredMark={false}
-                    form={form}
-                    labelCol={{ span: 6 }}
-                    wrapperCol={{ span: 16 }}
-                    labelAlign="left"
-                    layout="horizontal"
-                    initialValues={formInitialValues}
-                >
-                    <Collapse defaultActiveKey={["1", "2", "3", "4"]}>
-                        <Collapse.Panel header="Generative Settings" key="2" extra={genExtra("gen_file")}>
-                            <Button htmlType="button" onClick={() => showModalGen(null)}>
-                                Add Gen File
-                            </Button>
-                            <Table dataSource={genTableData} columns={genTableColumns} rowKey="genUrl"></Table>
-                        </Collapse.Panel>
-                        <Collapse.Panel header="Evaluative Settings" key="3" extra={genExtra("eval_file")}>
-                            <Button htmlType="button" onClick={() => showModalEval(null)}>
-                                Add Eval File
-                            </Button>
-                            <Table dataSource={evalTableData} columns={evalTableColumns} rowKey="evalUrl"></Table>
-                        </Collapse.Panel>
-                        <Collapse.Panel header="Search Settings" key="1" extra={genExtra("settings_1")}>
-                            <Tooltip placement="topLeft" title={helpText.description}>
-                                <Form.Item label="Description" name="description">
-                                    <Input />
-                                </Form.Item>
-                            </Tooltip>
+            <Form
+                name="ResumeJob"
+                onFinish={handleFinish}
+                onFinishFailed={handleFinishFail}
+                scrollToFirstError={true}
+                requiredMark={false}
+                form={form}
+                labelCol={{ span: 6 }}
+                wrapperCol={{ span: 16 }}
+                layout="horizontal"
+                labelAlign="left"
+                initialValues={formInitialValues}
+            >
+                <Collapse defaultActiveKey={["1", "2", "3", "4"]}>
+                    <Collapse.Panel header="New Generative Settings" key="2" extra={genExtra("resume_gen_file")}>
+                        <Button htmlType="button" onClick={() => showModalGen(null)}>Add Gen File</Button>
+                        <Table dataSource={genTableData} columns={genTableColumns} rowKey="genUrl"></Table>
+                    </Collapse.Panel>
+                    <Collapse.Panel header="New Evaluative Settings" key="3" extra={genExtra("resume_eval_file")}>
+                        <Button htmlType="button" onClick={() => showModalEval(null)}>Add Eval File</Button>
+                        <Table dataSource={evalTableData} columns={evalTableColumns} rowKey="evalUrl"></Table>
+                    </Collapse.Panel>
+                    <Collapse.Panel header="New Search Settings" key="1" extra={genExtra("resume_new_settings_1")}>
+                        <Tooltip placement="topLeft" title={helpText.new_gens}>
+                            <Form.Item label="Number of new Generations" name="new_gens" rules={rules}>
+                                <InputNumber min={0} onChange={onNumGenChange} />
+                            </Form.Item>
+                        </Tooltip>
 
-                            <Tooltip placement="topLeft" title={helpText.num_gen}>
-                                <Form.Item label="Number of Generations" name="num_gen" rules={rules}>
-                                    <InputNumber min={1} onChange={onNumGenChange} />
-                                </Form.Item>
-                            </Tooltip>
+                        <Tooltip placement="topLeft" title={helpText.new_designs}>
+                            <Form.Item label="Number of New Designs" name="new_designs" rules={rules}>
+                                <InputNumber className="form-text" disabled/>
+                            </Form.Item>
+                        </Tooltip>
 
-                            <Tooltip placement="topLeft" title={helpText.max_designs}>
-                                <Form.Item label="Number of Designs" name="max_designs" rules={rules}>
-                                    <InputNumber className="form-text" disabled />
-                                </Form.Item>
-                            </Tooltip>
+                        <Tooltip placement="topLeft" title={helpText.max_designs}>
+                            <Form.Item label="New Max Designs" name="max_designs" rules={rules}>
+                                <InputNumber className="form-text" disabled />
+                            </Form.Item>
+                        </Tooltip>
 
-                            <Tooltip placement="topLeft" title={helpText.population_size}>
-                                <Form.Item label="Population Size" name="population_size" rules={rules}>
-                                    <InputNumber min={1} onChange={onPopChange} />
-                                </Form.Item>
-                            </Tooltip>
+                        <Tooltip placement="topLeft" title={helpText.population_size}>
+                            <Form.Item label="Population Size" name="population_size" rules={rules}>
+                                <InputNumber min={1} onChange={onPopChange} />
+                            </Form.Item>
+                        </Tooltip>
 
-                            <Divider />
+                        <Divider/>
 
-                            <Tooltip placement="topLeft" title={helpText.total_items}>
-                                <Form.Item label="Total Starting Items" name="genFile_total_items">
-                                    <InputNumber className="form-text" disabled />
+                        <Tooltip placement="topLeft" title={helpText.total_items}>
+                            <Form.Item label="Total Starting Items" name="genFile_total_items">
+                                <InputNumber className="form-text" disabled />
+                            </Form.Item>
+                        </Tooltip>
+                        {/* {jobSettings.genUrl.map((genUrl) => {
+                            const genFile = genUrl.split("/").pop();
+                            return <div key={"genFile_" + genFile}>
+                                <Form.Item label={genFile + ' - existing'} name={"genFile_existing_" + genFile} key={"genFile_existing_" + genFile}>
+                                    <InputNumber className="form-text" disabled/>
                                 </Form.Item>
-                            </Tooltip>
-                            {genFiles.map((genUrl) => {
-                                const genFile = genUrl.split("/").pop();
-                                return (
+                                <Form.Item label={genFile + ' - new'} name={"genFile_" + genFile} key={"genFile_" + genFile} rules={[...rules, {validator: checkGenFile}]}>
+                                    <InputNumber min={formInitialValues["genFile_" + genFile]} onChange={onNumChange}/>
+                                </Form.Item>
+                                </div>;
+                        })} */}
+                        {jobSettings.genUrl.map((genUrl) => {
+                            const genFile = genUrl.split("/").pop();
+                            return (<div key={"genFile_" + genFile}>
+                                    <Form.Item label={genFile + ' - existing'} name={"genFile_existing_" + genFile} key={"genFile_existing_" + genFile}>
+                                        <InputNumber className="form-text" disabled/>
+                                    </Form.Item>
                                     <Form.Item label={genFile} key={"genFile_" + genFile}>
                                         <Form.Item
                                             className="sub-form-item"
@@ -956,7 +1163,7 @@ function SettingsForm({ currentStateManage }) {
                                             name={"genFile_" + genFile}
                                             rules={[...rules, { validator: checkGenFile }]}
                                         >
-                                            <InputNumber name={"genFile_" + genFile} min={importData[genFile].min} onChange={onNumChange} />
+                                            <InputNumber name={"genFile_" + genFile} min={importData[genFile].min + formInitialValues["genFile_" + genFile]} onChange={onNumChange} />
                                         </Form.Item>
                                         <Form.Item key="import_btn" className="sub-form-item">
                                             <Button onClick={()=>{showModalImport(genFile)}}>import</Button>
@@ -967,76 +1174,50 @@ function SettingsForm({ currentStateManage }) {
                                             })}
                                         </Form.Item>
                                     </Form.Item>
-                                );
-                            })}
-                            <Tooltip placement="topLeft" title={helpText.random_generated}>
-                                <Form.Item label="Randomly Generated" name="genFile_random_generated">
-                                    <InputNumber className="form-text" disabled />
-                                </Form.Item>
-                            </Tooltip>
+                                </div>
+                            );
+                        })}
 
-                            <Divider />
+                        <Divider/>
+                        <Tooltip placement="topLeft" title={helpText.tournament_size}>
+                            <Form.Item label="Tournament Size" name="tournament_size" rules={[...rules,{ validator: checkTournament }]}>
+                                <InputNumber min={1} />
+                            </Form.Item>
+                        </Tooltip>
 
-                            <Tooltip placement="topLeft" title={helpText.tournament_size}>
-                                <Form.Item label="Tournament Size" name="tournament_size" rules={[...rules, { validator: checkTournament }]}>
-                                    <InputNumber />
-                                </Form.Item>
-                            </Tooltip>
+                        <Tooltip placement="topLeft" title={helpText.mutation_sd}>
+                            <Form.Item label="Mutation Standard Deviation" name="mutation_sd">
+                                <InputNumber min={0.001} max={1} step={0.001}/>
+                            </Form.Item>
+                        </Tooltip>
 
-                            <Tooltip placement="topLeft" title={helpText.mutation_sd}>
-                                <Form.Item label="Mutation Standard Deviation" name="mutation_sd">
-                                    <InputNumber min={0.001} max={1} step={0.001} />
-                                </Form.Item>
-                            </Tooltip>
-                        </Collapse.Panel>
-                    </Collapse>
-                    <br></br>
-                    <Row justify="center">
-                        <Button type="primary" htmlType="submit">
-                            Start
-                        </Button>
-                    </Row>
-                    <br></br>
-                    <br></br>
-                    <br></br>
-                </Form>
-            </Spin>
+                    </Collapse.Panel>
+                </Collapse>
+                <br />
+                <Row justify="center">
+                    <Button type="primary" htmlType="submit">
+                        Resume Search
+                    </Button>
+                </Row>
+            </Form>
             <FileSelectionModal
-                form={form}
+                form = {form}
                 isFileModalVisibleState={{ isFileModalVisible, setIsFileModalVisible }}
-                importDataState={{ importData, setImportData }}
-                genFilesState={{ genFiles, setGenFiles }}
-                setEvalFile={setEvalFile}
+                jobSettingsState={{ jobSettings, setJobSettings }}
+                jobResultsState={{ jobResults, setJobResults }}
                 replacedUrl={replacedUrl}
                 replaceEvalCheck={replaceEvalCheck}
             />
             <ParamImportModal
                 form={form}
+                jobSettings={jobSettings}
                 isImportModalVisibleState={{ isImportModalVisible, setIsImportModalVisible }}
                 importDataState={{ importData, setImportData }}
                 genFile={importGenFile}
-                cognitoPayloadSub={cognitoPayload.sub}
             />
+            <button id='triggerNumGenChange' className='hidden-elm' onClick={onNumGenChange}></button>
         </>
     );
 }
 
-function JobForm() {
-    const [currentState, setCurrentState] = useState(false);
-    return (
-        <div className="jobForm-container">
-            <Space direction="vertical" size="large" style={{ width: "inherit" }}>
-                <Space direction="horizontal" size="small" align="baseline">
-                    <h1>Start New Search</h1>
-                    <Help page="start_new_job_page" part="main"></Help>
-                </Space>
-
-                {/* <FileSelection nextStep={nextStep} formValuesState={{ formValues, setFormValues }} /> */}
-                <SettingsForm currentStateManage={{ currentState, setCurrentState }} />
-                {/* <FormToRender /> */}
-            </Space>
-        </div>
-    );
-}
-
-export default JobForm;
+export { ResumeForm };

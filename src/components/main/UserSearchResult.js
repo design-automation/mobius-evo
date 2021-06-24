@@ -26,13 +26,13 @@ import { AuthContext } from "../../Contexts";
 import Iframe from "react-iframe";
 // import { ReactComponent as Download } from "../../assets/download.svg";
 import { ReactComponent as View } from "../../assets/view.svg";
-import { ResumeForm } from "./JobResults_resume.js";
+import { ResumeForm } from "./UserSearchResult_resume.js";
 import Help from "./utils/Help";
 import { getS3Public } from "../../amplify-apis/userFiles";
 import { ConsoleSqlOutlined, QuestionCircleOutlined } from "@ant-design/icons";
 import { XYPlot, DecorativeAxis, LineSeries, DiscreteColorLegend, XAxis } from "react-vis";
 
-import "./JobResults.css";
+import "./UserSearchResult.css";
 
 const MOBIUS_VIEWER_URL = "https://design-automation.github.io/mobius-viewer-dev-0-7/";
 const { TabPane } = Tabs;
