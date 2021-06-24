@@ -6,7 +6,7 @@ import Landing from './main/Landing';
 import User from './main/User';
 
 import GuestSearchesList from './main/GuestSearchesList';
-// import GuestSearchResult from './main/GuestSearchResult';
+import GuestSearchResult from './main/GuestSearchResult';
 
 import Explorations from './main/UserSearchesList';
 import JobForm from './main/UserCreateNewSearch';
@@ -33,7 +33,7 @@ function MainSection() {
       <Switch>
         <Route path="/" exact component={ Landing }/>
         <Route path="/view-searches" exact component={ GuestSearchesList }/>
-        {/* <Route path="/view-searches/search-results" exact component={ GuestSearchResult }/> */}
+        <Route path="/view-searches/search-results" exact component={ GuestSearchResult }/>
         <PrivateRoute path="/user" component={ User }/>
         <PrivateRoute path="/new-job" component={ JobForm }/>
         <PrivateRoute path="/searches/search-results" component={ JobResults }/>

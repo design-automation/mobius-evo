@@ -22,7 +22,18 @@ function HeaderComponent() {
         </Link>
       </Button>
     );
-
+    const guestMenu = (
+        <Button
+          id="explorations-btn"
+          type="link"
+          className="nav-button nav-menu"
+        >
+          <Link to="/view-searches">
+              All Searches
+          </Link>
+        </Button>
+    );
+  
     return (
       <nav>
         <h1 
@@ -34,6 +45,7 @@ function HeaderComponent() {
           >Mobius Evolver (v {packageJson.version})</Link>
         </h1>
         {cognitoPayload && menu}
+        {guestMenu}
       </nav>
     );
   };

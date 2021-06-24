@@ -2,7 +2,7 @@
 // this is an auto generated file. This will be overwritten
 
 export const onCreateJob = /* GraphQL */ `
-  subscription OnCreateJob($owner: String!) {
+  subscription OnCreateJob($owner: String) {
     onCreateJob(owner: $owner) {
       id
       userID
@@ -27,7 +27,7 @@ export const onCreateJob = /* GraphQL */ `
   }
 `;
 export const onUpdateJob = /* GraphQL */ `
-  subscription OnUpdateJob($owner: String!) {
+  subscription OnUpdateJob($owner: String) {
     onUpdateJob(owner: $owner) {
       id
       userID
@@ -52,7 +52,7 @@ export const onUpdateJob = /* GraphQL */ `
   }
 `;
 export const onDeleteJob = /* GraphQL */ `
-  subscription OnDeleteJob($owner: String!) {
+  subscription OnDeleteJob($owner: String) {
     onDeleteJob(owner: $owner) {
       id
       userID
@@ -77,7 +77,7 @@ export const onDeleteJob = /* GraphQL */ `
   }
 `;
 export const onCreateGenEvalParam = /* GraphQL */ `
-  subscription OnCreateGenEvalParam($owner: String!) {
+  subscription OnCreateGenEvalParam($owner: String) {
     onCreateGenEvalParam(owner: $owner) {
       id
       JobID
@@ -99,7 +99,7 @@ export const onCreateGenEvalParam = /* GraphQL */ `
   }
 `;
 export const onUpdateGenEvalParam = /* GraphQL */ `
-  subscription OnUpdateGenEvalParam($owner: String!) {
+  subscription OnUpdateGenEvalParam($owner: String) {
     onUpdateGenEvalParam(owner: $owner) {
       id
       JobID
@@ -121,7 +121,7 @@ export const onUpdateGenEvalParam = /* GraphQL */ `
   }
 `;
 export const onDeleteGenEvalParam = /* GraphQL */ `
-  subscription OnDeleteGenEvalParam($owner: String!) {
+  subscription OnDeleteGenEvalParam($owner: String) {
     onDeleteGenEvalParam(owner: $owner) {
       id
       JobID

@@ -7,7 +7,6 @@ import { listJobs } from "../../graphql/queries";
 import Help from './utils/Help';
 import "./GuestSearchesList.css";
 import {compareAscend, compareDescend} from './utils/UtilFunctions'
-import { AuthContext } from "../../Contexts";
 
 function JobTable({ isDataLoadingState, jobDataState }) {
     const { isDataLoading, setIsDataLoading } = isDataLoadingState;
@@ -111,15 +110,9 @@ function JobTable({ isDataLoadingState, jobDataState }) {
     };
 
     function handleRowClick(rowData) {
-        window.location.href = `/searches/search-results#${QueryString.stringify({ id: rowData.id })}`;
+        window.location.href = `/view-searches/search-results#${QueryString.stringify({ id: rowData.id })}`;
     }
     return ( <>
-        <Space direction="horizontal" size="small" align='center'>
-            <Button type="primary">
-                <Link to={`/new-job`}>Create New Search</Link>
-            </Button>
-            <Help page='jobs_page' part='main'></Help>
-        </Space>
         <Table
             loading={isDataLoading}
             dataSource={jobData}
@@ -142,12 +135,9 @@ function JobTable({ isDataLoadingState, jobDataState }) {
 }
 
 function GuestSearchesList() {
-    const { cognitoPayload } = useContext(AuthContext);
     const [isDataLoading, setIsDataLoading] = useState(true);
     const [dataView, setDataView] = useState("tree");
     const [jobData, setjobData] = useState([]);
-
-    console.log(cognitoPayload)
 
     const compareDescend = (a, b) => {
         if (a > b) {
@@ -160,10 +150,11 @@ function GuestSearchesList() {
     };
 
     const refreshList = (setjobData, setIsDataLoading) => {
-        API.graphql(
-            graphqlOperation(listJobs),
-        )
-            .then((queriedResults) => {
+        API.graphql({
+            query: listJobs,
+            variables: {},
+            authMode: 'API_KEY'
+        }).then((queriedResults) => {
                 const jobList = queriedResults.data.listJobs.items;
                 const jobData = jobList.map((data, index) => {
                     if (data.run_settings) {

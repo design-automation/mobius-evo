@@ -7,7 +7,11 @@
         "authConfig": {
           "additionalAuthenticationProviders": [
             {
-              "authenticationType": "AWS_IAM"
+              "authenticationType": "API_KEY",
+              "apiKeyConfig": {
+                "apiKeyExpirationDays": 7,
+                "description": "guest API key"
+              }
             }
           ],
           "defaultAuthentication": {
@@ -134,45 +138,45 @@
       ]
     }
   },
-  "monitoring":{
-    "evoInfo":{
-      "service":"CloudWatch",
-      "providerPlugin":"awscloudformation",
+  "monitoring": {
+    "evoInfo": {
+      "service": "CloudWatch",
+      "providerPlugin": "awscloudformation",
       "dependsOn": [
         {
-        "category": "storage",
-        "resourceName": "mobiusevoUserfiles",
-        "attributes": [
+          "category": "storage",
+          "resourceName": "mobiusevoUserfiles",
+          "attributes": [
             "BucketName"
-        ]
+          ]
         },
         {
-        "category": "function",
-        "resourceName": "evoGenerate",
-        "attributes": [
+          "category": "function",
+          "resourceName": "evoGenerate",
+          "attributes": [
             "Name"
-        ]
+          ]
         },
         {
-        "category": "function",
-        "resourceName": "evoEvaluate",
-        "attributes": [
+          "category": "function",
+          "resourceName": "evoEvaluate",
+          "attributes": [
             "Name"
-        ]
+          ]
         },
         {
-        "category": "function",
-        "resourceName": "evoController",
-        "attributes": [
+          "category": "function",
+          "resourceName": "evoController",
+          "attributes": [
             "Name"
-        ]
+          ]
         },
         {
-        "category": "function",
-        "resourceName": "evoScreenshot",
-        "attributes": [
+          "category": "function",
+          "resourceName": "evoScreenshot",
+          "attributes": [
             "Name"
-        ]
+          ]
         }
       ]
     }
