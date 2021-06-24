@@ -83,14 +83,9 @@
       }
     },
     "Outputs":{
-      "Region":{
-        "Value":{
-          "Ref":"AWS::Region"
-        }
-      },
-      "AlarmsTopicArn":{
-        "Value":{
-          "Ref":"EvoInfoDashboard"
+      "Name": {
+        "Value": {
+          "Ref": "EvoInfoDashboard"
         }
       }
     }
