@@ -153,7 +153,7 @@ function GuestSearchesList() {
         API.graphql({
             query: listJobs,
             variables: {},
-            authMode: 'API_KEY'
+            authMode: 'AWS_IAM'
         }).then((queriedResults) => {
                 const jobList = queriedResults.data.listJobs.items;
                 const jobData = jobList.map((data, index) => {

@@ -109,7 +109,7 @@ async function getData(jobID, setJobSettings, setJobResults, setIsLoading, callb
                 items: {},
                 nextToken,
             },
-            authMode: 'API_KEY'
+            authMode: 'AWS_IAM'
         })
         .then((queryResult) => {
             let queriedJobResults = queryResult.data.generationsByJobID.items;
@@ -142,7 +142,7 @@ async function getData(jobID, setJobSettings, setJobResults, setIsLoading, callb
         variables: {
             id: jobID,
         },
-        authMode: 'API_KEY'
+        authMode: 'AWS_IAM'
     })
         .then((queryResult) => {
             const jobData = queryResult.data.getJob;

@@ -1,4 +1,4 @@
-type Job @model @auth(rules: [{ allow: owner }, { allow: public, operations: [read] }]) {
+type Job @model @auth(rules: [{ allow: owner }, { allow: public, provider: iam, operations: [read] }]) {
     id: ID!
     userID: ID!
     evalUrl: String! #s3 key
@@ -29,7 +29,7 @@ enum JobStatus {
     cancelling
 }
 
-type GenEvalParam @model @auth(rules: [{ allow: owner }, { allow: public, operations: [read] }]) @key(name: "byJobID", fields: ["JobID", "owner"], queryField: "generationsByJobID") {
+type GenEvalParam @model @auth(rules: [{ allow: owner }, { allow: public, provider: iam, operations: [read] }]) @key(name: "byJobID", fields: ["JobID", "owner"], queryField: "generationsByJobID") {
     id: ID!
     JobID: ID!
     GenID: ID!
