@@ -33,49 +33,6 @@
       "dependsOn": []
     }
   },
-  "monitoring":{
-    "evoInfo":{
-      "service":"CloudWatch",
-      "providerPlugin":"awscloudformation",
-      "dependsOn": [
-        {
-        "category": "storage",
-        "resourceName": "mobiusevoUserfiles",
-        "attributes": [
-            "BucketName"
-        ]
-        },
-        {
-        "category": "function",
-        "resourceName": "evoGenerate",
-        "attributes": [
-            "Name"
-        ]
-        },
-        {
-        "category": "function",
-        "resourceName": "evoEvaluate",
-        "attributes": [
-            "Name"
-        ]
-        },
-        {
-        "category": "function",
-        "resourceName": "evoController",
-        "attributes": [
-            "Name"
-        ]
-        },
-        {
-        "category": "function",
-        "resourceName": "evoScreenshot",
-        "attributes": [
-            "Name"
-        ]
-        }
-      ]
-    }
-  },
   "function": {
     "evoGenerate": {
       "build": true,
@@ -175,6 +132,49 @@
           ]
         }
       ]
+    },
+    "monitoring":{
+      "evoInfo":{
+        "service":"CloudWatch",
+        "providerPlugin":"awscloudformation",
+        "dependsOn": [
+          {
+          "category": "storage",
+          "resourceName": "mobiusevoUserfiles",
+          "attributes": [
+              "BucketName"
+          ]
+          },
+          {
+          "category": "function",
+          "resourceName": "evoGenerate",
+          "attributes": [
+              "Name"
+          ]
+          },
+          {
+          "category": "function",
+          "resourceName": "evoEvaluate",
+          "attributes": [
+              "Name"
+          ]
+          },
+          {
+          "category": "function",
+          "resourceName": "evoController",
+          "attributes": [
+              "Name"
+          ]
+          },
+          {
+          "category": "function",
+          "resourceName": "evoScreenshot",
+          "attributes": [
+              "Name"
+          ]
+          }
+        ]
+      }
     }
   }
 }
