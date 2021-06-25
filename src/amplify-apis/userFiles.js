@@ -15,6 +15,18 @@ export async function uploadS3(s3Key, object, onSuccess, onError, onProgress) {
     }
 }
 
+export async function deleteS3(s3Key, rejected) {
+    const files = await Storage.list(s3Key, { level: "protected" }).catch((err) => {
+        console.log(err);
+        return;
+    });
+    console.log(files)
+    const allPromises = files.map((f) => {
+        return Storage.remove(f.key, { level: "protected" }).catch((err) => console.log(err));
+    });
+    await Promise.all(allPromises);
+}
+
 export async function listS3(resolved, rejected) {
     try {
         const files = await Storage.list("files/", { level: "protected" });
@@ -88,14 +100,15 @@ export async function getSettingsFile(resolved, rejected) {
         rejected();
     }
 }
-
-export async function deleteS3(s3Key, rejected) {
-    const files = await Storage.list(s3Key, { level: "public" }).catch((err) => {
-        console.log(err);
-        return;
-    });
-    const allPromises = files.map((f) => {
-        return Storage.remove(f.key, { level: "public" }).catch((err) => console.log(err));
-    });
-    await Promise.all(allPromises);
+export async function writeSettingsFile(data, onSuccess, onError) {
+    try {
+        const s3config = {
+            level: "public",
+        };
+        const x = await Storage.put("settings.json", data, s3config);
+        console.log(x)
+        onSuccess();
+    } catch (err) {
+        onError();
+    }
 }

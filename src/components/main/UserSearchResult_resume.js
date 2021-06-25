@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Form, Space, Button, Divider, InputNumber, Upload, message, Tag, Table, Modal, Row, Collapse, Tooltip, notification, Descriptions } from "antd";
-import { uploadS3, listS3, getS3Url, downloadS3 } from "../../amplify-apis/userFiles";
+import { uploadS3, listS3, getS3Url, downloadS3, deleteS3 } from "../../amplify-apis/userFiles";
 import { UploadOutlined } from "@ant-design/icons";
 import { API, graphqlOperation } from "aws-amplify";
 import { createGenEvalParam, updateGenEvalParam, updateJob } from "../../graphql/mutations";
@@ -243,6 +243,23 @@ function FileSelectionModal({form, isFileModalVisibleState, jobSettingsState, jo
         setIsFileModalVisible(false);
     };
 
+    const deleteUploadedFile = async (fileName, index) => {
+        setIsTableLoading(true);
+        let fileDir;
+        if (replaceEvalCheck) {
+            fileDir = `files/eval/${fileName}`
+        } else {
+            console.log('gen')
+            fileDir = `files/gen/${fileName}`
+        }
+        await deleteS3(fileDir, null)
+        setSelectedRows([]);
+        setSelectedRowKeys([]);
+        s3Files.splice(index, 1)
+        setS3Files([...s3Files])
+        setIsTableLoading(false);
+    }
+
     const columns = [
         {
             title: "File",
@@ -268,6 +285,12 @@ function FileSelectionModal({form, isFileModalVisibleState, jobSettingsState, jo
                     ) : null}
                 </Space>
             ),
+        },
+        {
+            title: "Action",
+            dataIndex: "filename",
+            key: "action",
+            render: (filename, _, index) => <button className='text-btn' onClick={() => deleteUploadedFile(filename, index)}>delete</button>
         }
     ];
 
@@ -349,7 +372,7 @@ function FileSelectionModal({form, isFileModalVisibleState, jobSettingsState, jo
     };
     return (
         <>
-            <Modal title="Select File" visible={isFileModalVisible} onOk={handleOk} onCancel={handleCancel}>
+            <Modal title="Select File" visible={isFileModalVisible} width='60%' onOk={handleOk} onCancel={handleCancel}>
                 <Space direction="vertical" size="middle" style={{ width: "100%" }}>
                     <FileUpload uploadType={replaceEvalCheck?"eval":"gen"} />
                     <Table

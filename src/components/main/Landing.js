@@ -7,10 +7,13 @@ import { AmplifyAuthenticator, AmplifySignIn, AmplifySignUp } from "@aws-amplify
 import { Space, Collapse, Row, Col, Typography, Button, Descriptions, Checkbox, Affix } from "antd";
 import { Link } from 'react-router-dom';
 import { UploadOutlined } from "@ant-design/icons";
+import { getSettingsFile } from "../../amplify-apis/userFiles";
 import awsExports from '../../aws-exports'
 
 function Landing() {
     function NotAuthenticated() {
+        const [hideSignUp, setHideSignUp] = useState(true);
+
         const setCognitoPayload = useContext(AuthContext).setCognitoPayload;
         async function authUser() {
             try {
@@ -23,7 +26,25 @@ function Landing() {
                 }
             }
         }
-        useEffect(() => {onAuthUIStateChange(authUser)});
+
+        useEffect(() => {
+            let isMounted = true;
+            onAuthUIStateChange(authUser)
+            let settingFile;
+            getSettingsFile(response => settingFile = response, () => settingFile = null).then(()=>{
+                if (!isMounted) return;
+                if (settingFile) {
+                    try {
+                        const settings = JSON.parse(settingFile);
+                        console.log(settings)
+                        setHideSignUp(settings.hideSignUp);
+                    } catch(ex) {}
+                } else {
+                    setHideSignUp(false);
+                }
+            })
+            return () => { isMounted = false };
+        });
 
         return (
             <AmplifyAuthenticator usernameAlias="email">
@@ -52,18 +73,18 @@ function Landing() {
                     }
                     ]}
                 />
-                <AmplifySignIn slot="sign-in" usernameAlias="email" headerText="Get started!" hideSignUp/>
+                <AmplifySignIn slot="sign-in" usernameAlias="email" headerText="Get started!" hideSignUp={hideSignUp}/>
             </AmplifyAuthenticator>
         );
     }
     function Authenticated() {
         if (awsExports.aws_user_files_s3_bucket && awsExports.aws_user_files_s3_bucket_region) {
             const dashboardName = 'evoInfo' + awsExports.aws_user_files_s3_bucket.split('userfiles131353')[1];
-            return <Typography.Link 
+            return <a 
+                target="_blank"
                 href={`https://console.aws.amazon.com/cloudwatch/home?region=${awsExports.aws_user_files_s3_bucket_region}#dashboards:name=${dashboardName}`}>
                 Monitor Möbius Evolver data usage
-            </Typography.Link>
-
+            </a>
         }
     }
     function LandingSection() {
