@@ -392,7 +392,7 @@ function ParamImportModal({ form, isImportModalVisibleState, genFile, cognitoPay
             }
         },
         {
-            title: "Param Count",
+            title: "Number of Imported Individuals",
             dataIndex: "resultList",
             key: "resultList",
             ...sortProps,

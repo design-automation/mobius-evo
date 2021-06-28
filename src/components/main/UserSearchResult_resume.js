@@ -488,7 +488,7 @@ function ParamImportModal({ form, jobSettings, isImportModalVisibleState, genFil
             }
         },
         {
-            title: "Param Count",
+            title: "Number of Imported Individuals",
             dataIndex: "resultList",
             key: "resultList",
             ...sortProps,
