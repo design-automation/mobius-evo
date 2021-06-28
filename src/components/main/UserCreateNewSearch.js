@@ -300,14 +300,6 @@ function ParamImportModal({ form, isImportModalVisibleState, genFile, cognitoPay
     const { importData, setImportData } = importDataState;
     const [selectedRows, setSelectedRows] = useState([]);
     const [selectedRowKeys, setSelectedRowKeys] = useState([]);
-    const [lastGenFile, setLastGenFile] = useState(null);
-
-    if (lastGenFile !== genFile) {
-        setSelectedRows([])
-        setSelectedRowKeys([])
-        setJobList([])
-        setLastGenFile(genFile)
-    }
 
     const handleOk = async () => {
         importData[genFile].jobs = []
@@ -440,8 +432,9 @@ function ParamImportModal({ form, isImportModalVisibleState, genFile, cognitoPay
     }
 
     const listRelatedJobs = () => {
-        setIsTableLoading(true);
         let isSubscribed = true; // prevents memory leak on unmount
+        setJobList([]);
+        setIsTableLoading(true);
         API.graphql(
             graphqlOperation(listJobs, {
                 filter: {
@@ -452,6 +445,7 @@ function ParamImportModal({ form, isImportModalVisibleState, genFile, cognitoPay
             })
         )
             .then(async (queriedResults) => {
+                if (!isSubscribed) { return; }
                 const jobList = queriedResults.data.listJobs.items;
                 const queryPromises = [];
                 const jobData = jobList.map((data, index) => {
@@ -483,14 +477,14 @@ function ParamImportModal({ form, isImportModalVisibleState, genFile, cognitoPay
                 const _jobList = jobData.filter(x => (x !== null) && (x.resultList.length > 0)).sort(
                     (a, b) => compareDescend(a.updatedAt, b.updatedAt))
                 setJobList(_jobList);
-                setTimeout(() => {
-                    setIsTableLoading(false);
-                }, 1000);
+                setSelectedRows([])
+                setSelectedRowKeys([])
+                setIsTableLoading(false);
             })
             .catch((error) => console.log(error));
         return () => (isSubscribed = false);
     };
-    useEffect(listRelatedJobs, [cognitoPayloadSub, isImportModalVisible]); // Updates when new files are uploaded
+    useEffect(listRelatedJobs, [cognitoPayloadSub, genFile]); // Updates when new files are uploaded
 
     const handleTableChange = (pagination, filters, sorter) => {
         const [field, order] = [sorter.field, sorter.order];
