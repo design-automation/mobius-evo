@@ -794,7 +794,7 @@ function ScorePlot({ jobResults }) {
                 </div>`;
             },
         },
-        annotations: regionAnnotations,
+        // annotations: regionAnnotations,
     };
     if (minY && maxY) {
         config.yAxis = {

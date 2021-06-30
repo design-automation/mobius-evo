@@ -192,11 +192,21 @@ function Landing() {
                                             height={"200px"}
                                         />
                                     </Col>
+                                    <Col>
+                                    </Col>
                                 </Row>
-                                <Space>
-                                    <Typography.Link>Example Gen File</Typography.Link>
-                                    <Typography.Link>Example Eval File</Typography.Link>
-                                </Space>
+                                <Row>
+                                    <Space>
+                                        <Typography.Link href="/example_gen.js" target="_blank">Example Gen JS File</Typography.Link>
+                                        <Typography.Link href="/example_gen.mob" target="_blank">Example Gen Mob File</Typography.Link>
+                                    </Space>
+                                </Row>
+                                <Row>
+                                    <Space>
+                                        <Typography.Link href="/example_eval.js" target="_blank">Example Eval JS File</Typography.Link>
+                                        <Typography.Link href="/example_eval.mob" target="_blank">Example Eval Mob File</Typography.Link>
+                                    </Space>
+                                </Row>
                             </Collapse.Panel>
                             <Collapse.Panel header="2. Create New Search" key="b">
                                 <Descriptions column={1} bordered={true}>
