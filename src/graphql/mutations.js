@@ -15,6 +15,7 @@ export const createJob = /* GraphQL */ `
       description
       history
       run_settings
+      other_settings
       max_designs
       population_size
       tournament_size
@@ -43,6 +44,7 @@ export const updateJob = /* GraphQL */ `
       description
       history
       run_settings
+      other_settings
       max_designs
       population_size
       tournament_size
@@ -71,6 +73,7 @@ export const deleteJob = /* GraphQL */ `
       description
       history
       run_settings
+      other_settings
       max_designs
       population_size
       tournament_size

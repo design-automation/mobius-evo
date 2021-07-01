@@ -12,6 +12,7 @@ export const getJob = /* GraphQL */ `
       description
       history
       run_settings
+      other_settings
       max_designs
       population_size
       tournament_size
@@ -42,6 +43,7 @@ export const listJobs = /* GraphQL */ `
         description
         history
         run_settings
+        other_settings
         max_designs
         population_size
         tournament_size
