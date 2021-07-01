@@ -1,4 +1,4 @@
-import React, { useContext, useEffect } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import "./Landing.css";
 import { Auth } from "aws-amplify";
 import { onAuthUIStateChange } from "@aws-amplify/ui-components";
@@ -7,9 +7,13 @@ import { AmplifyAuthenticator, AmplifySignIn, AmplifySignUp } from "@aws-amplify
 import { Space, Collapse, Row, Col, Typography, Button, Descriptions, Checkbox, Affix } from "antd";
 import { Link } from 'react-router-dom';
 import { UploadOutlined } from "@ant-design/icons";
+import { getSettingsFile } from "../../amplify-apis/userFiles";
+import awsExports from '../../aws-exports'
 
 function Landing() {
     function NotAuthenticated() {
+        const [hideSignUp, setHideSignUp] = useState(true);
+
         const setCognitoPayload = useContext(AuthContext).setCognitoPayload;
         async function authUser() {
             try {
@@ -22,8 +26,26 @@ function Landing() {
                 }
             }
         }
-        useEffect(() => onAuthUIStateChange(authUser));
-    
+
+        useEffect(() => {
+            let isMounted = true;
+            onAuthUIStateChange(authUser)
+            let settingFile;
+            getSettingsFile(response => settingFile = response, () => settingFile = null).then(()=>{
+                if (!isMounted) return;
+                if (settingFile) {
+                    try {
+                        const settings = JSON.parse(settingFile);
+                        console.log(settings)
+                        setHideSignUp(settings.hideSignUp);
+                    } catch(ex) {}
+                } else {
+                    setHideSignUp(false);
+                }
+            })
+            return () => { isMounted = false };
+        });
+
         return (
             <AmplifyAuthenticator usernameAlias="email">
                 <AmplifySignUp
@@ -51,10 +73,20 @@ function Landing() {
                     }
                     ]}
                 />
-                <AmplifySignIn slot="sign-in" usernameAlias="email" headerText="Get started!" />
+                <AmplifySignIn slot="sign-in" usernameAlias="email" headerText="Get started!" hideSignUp={hideSignUp}/>
             </AmplifyAuthenticator>
         );
-    } 
+    }
+    function Authenticated() {
+        if (awsExports.aws_user_files_s3_bucket && awsExports.aws_user_files_s3_bucket_region) {
+            const dashboardName = 'evoInfo' + awsExports.aws_user_files_s3_bucket.split('userfiles131353')[1];
+            return <a 
+                target="_blank"
+                href={`https://console.aws.amazon.com/cloudwatch/home?region=${awsExports.aws_user_files_s3_bucket_region}#dashboards:name=${dashboardName}`}>
+                Monitor Möbius Evolver data usage
+            </a>
+        }
+    }
     function LandingSection() {
         return (
             <section>
@@ -160,11 +192,21 @@ function Landing() {
                                             height={"200px"}
                                         />
                                     </Col>
+                                    <Col>
+                                    </Col>
                                 </Row>
-                                <Space>
-                                    <Typography.Link>Example Gen File</Typography.Link>
-                                    <Typography.Link>Example Eval File</Typography.Link>
-                                </Space>
+                                <Row>
+                                    <Space>
+                                        <Typography.Link href="/example_gen.js" target="_blank">Example Gen JS File</Typography.Link>
+                                        <Typography.Link href="/example_gen.mob" target="_blank">Example Gen Mob File</Typography.Link>
+                                    </Space>
+                                </Row>
+                                <Row>
+                                    <Space>
+                                        <Typography.Link href="/example_eval.js" target="_blank">Example Eval JS File</Typography.Link>
+                                        <Typography.Link href="/example_eval.mob" target="_blank">Example Eval Mob File</Typography.Link>
+                                    </Space>
+                                </Row>
                             </Collapse.Panel>
                             <Collapse.Panel header="2. Create New Search" key="b">
                                 <Descriptions column={1} bordered={true}>
@@ -241,7 +283,7 @@ function Landing() {
                         <Typography.Paragraph>
                             Möbius Evolver is being developed by the Design Automation Lab at the National University of Singapore.
                             <ul>
-                                <li><Link href="http://design-automation.net/">Design Automation Lab</Link></li>
+                                <li><Typography.Link href="http://design-automation.net/">Design Automation Lab</Typography.Link></li>
                             </ul>
                         </Typography.Paragraph>
                         <Typography.Paragraph>If you would like to collaborate or get involved, please contact us. </Typography.Paragraph>
@@ -258,7 +300,7 @@ function Landing() {
                     <LandingSection />
                 </Col>
                 <Col md={12}>
-                    <Affix className="login-container">{!useContext(AuthContext).cognitoPayload ? <NotAuthenticated /> : null}</Affix>
+                    <Affix className="login-container">{!useContext(AuthContext).cognitoPayload ? <NotAuthenticated /> : <Authenticated/>}</Affix>
                 </Col>
             </Row>
         </div>

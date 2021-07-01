@@ -26,13 +26,13 @@ import { AuthContext } from "../../Contexts";
 import Iframe from "react-iframe";
 // import { ReactComponent as Download } from "../../assets/download.svg";
 import { ReactComponent as View } from "../../assets/view.svg";
-import { ResumeForm } from "./JobResults_resume.js";
+import { ResumeForm } from "./UserSearchResult_resume.js";
 import Help from "./utils/Help";
 import { getS3Public } from "../../amplify-apis/userFiles";
 import { ConsoleSqlOutlined, QuestionCircleOutlined } from "@ant-design/icons";
 import { XYPlot, DecorativeAxis, LineSeries, DiscreteColorLegend, XAxis } from "react-vis";
 
-import "./JobResults.css";
+import "./UserSearchResult.css";
 
 const MOBIUS_VIEWER_URL = "https://design-automation.github.io/mobius-viewer-dev-0-7/";
 const { TabPane } = Tabs;
@@ -146,8 +146,13 @@ async function getData(jobID, userID, setJobSettings, setJobResults, setIsLoadin
     )
         .then((queryResult) => {
             const jobData = queryResult.data.getJob;
-            if (jobData && !jobData.mutation_sd) {
-                jobData.mutation_sd = 0.05;
+            if (jobData.run_settings) {
+                const runSettings = JSON.parse(jobData.run_settings);
+                jobData.num_gen = runSettings.num_gen;
+                jobData.max_designs = runSettings.max_designs;
+                jobData.population_size = runSettings.population_size;
+                jobData.tournament_size = runSettings.tournament_size;
+                jobData.mutation_sd = runSettings.mutation_sd;
             }
             setJobSettings(jobData);
             if (!jobData || jobData.jobStatus === "inprogress") {
@@ -789,7 +794,7 @@ function ScorePlot({ jobResults }) {
                 </div>`;
             },
         },
-        annotations: regionAnnotations,
+        // annotations: regionAnnotations,
     };
     if (minY && maxY) {
         config.yAxis = {
@@ -1245,24 +1250,41 @@ function JobResults() {
             title: "Gen File(s)",
             dataIndex: "genUrl",
             key: "genFile",
-            render: (urls) => (<>{urls.map(text => <p>{text.split("/").pop()}</p>)}</>),
+            render: (urls) => (<>{urls.map(text => {
+                const filekey = text.split("/").pop();
+                return <p key={filekey}>{filekey}</p>
+            })}</>),
         },
         {
             title: "Eval File",
             dataIndex: "evalUrl",
             key: "evalFile",
-            render: (text) => text.split("/").pop(),
+            render: (text) => <p>{text.split("/").pop()}</p>,
         },
         {
             title: "Settings",
             dataIndex: "max_designs",
             key: "evalFile",
-            render: (_, data) => (<>
-                    <p>{`max designs: ${data.max_designs}`}</p>
-                    <p>{`population size: ${data.population_size}`}</p>
-                    <p>{`tournament size: ${data.tournament_size}`}</p>
-                    <p>{`mutation standard deviation: ${data.mutation_sd}`}</p>
-            </>),
+            render: (_, data) => {
+                let max_designs, population_size, tournament_size, mutation_sd;
+                if (data.run_settings) {
+                    max_designs = data.run_settings.max_designs
+                    population_size = data.run_settings.population_size
+                    tournament_size = data.run_settings.tournament_size
+                    mutation_sd = data.run_settings.mutation_sd
+                } else {
+                    max_designs = data.max_designs
+                    population_size = data.population_size
+                    tournament_size = data.tournament_size
+                    mutation_sd = data.mutation_sd
+                }
+                return (<>
+                    <p key='md'>{`max designs: ${max_designs}`}</p>
+                    <p key='ps'>{`population size: ${population_size}`}</p>
+                    <p key='ts'>{`tournament size: ${tournament_size}`}</p>
+                    <p key='msd'>{`mutation standard deviation: ${mutation_sd}`}</p>
+                </>);
+            },
         },
     ];
     let pastSettingsData = [];

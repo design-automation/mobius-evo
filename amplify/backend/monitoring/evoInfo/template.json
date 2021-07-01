@@ -1,0 +1,93 @@
+{
+    "AWSTemplateFormatVersion":"2010-09-09",
+    "Description":"Cloudwatch dashboard for monitoring lambda and s3 usage",
+    "Parameters":{
+      "env":{
+        "Type":"String"
+      },
+      "storagemobiusevoUserfilesBucketName": {
+        "Type": "String",
+        "Default": "storagemobiusevoUserfilesBucketName"
+      },
+      "functionevoGenerateName": {
+        "Type": "String",
+        "Default": "functionevoGenerateName"
+      },
+      "functionevoEvaluateName": {
+        "Type": "String",
+        "Default": "functionevoEvaluateName"
+      },
+      "functionevoControllerName": {
+        "Type": "String",
+        "Default": "functionevoControllerName"
+      },
+      "functionevoScreenshotName": {
+        "Type": "String",
+        "Default": "functionevoScreenshotName"
+      }
+    },
+    "Conditions":{
+      "ShouldNotCreateEnvResources":{
+        "Fn::Equals":[
+          {
+            "Ref":"env"
+          },
+          "NONE"
+        ]
+      },
+      "IsEnvProd":{
+        "Fn::Equals":[
+          {
+            "Ref":"env"
+          },
+          "prod"
+        ]
+      }
+    },
+    "Resources":{
+      "EvoInfoDashboard":{
+        "Type":"AWS::CloudWatch::Dashboard",
+        "Properties":{
+            "DashboardName": {
+                "Fn::If": [
+                  "ShouldNotCreateEnvResources",
+                  "evoInfo",
+                  {
+                    "Fn::Join": [
+                      "",
+                      [
+                        "evoInfo",
+                        "-",
+                        {
+                          "Ref": "env"
+                        }
+                      ]
+                    ]
+                  }
+                ]
+              },
+            "DashboardBody": {
+                "Fn::Sub": [
+                    "{\"start\":\"-PT720H\",\"widgets\":[{\"height\":3,\"width\":18,\"y\":9,\"x\":0,\"type\":\"metric\",\"properties\":{\"metrics\":[[\"AWS/Lambda\",\"Duration\",\"FunctionName\",\"${genfunc}\"],[\"...\",\"${evalfunc}\",{\"yAxis\":\"left\"}],[\"...\",\"${ctrlfunc}\"],[\"...\",\"${screenshotfunc}\"]],\"view\":\"singleValue\",\"title\":\"Total Duration (30 days period)\",\"region\":\"${region}\",\"stat\":\"Sum\",\"period\":2592000,\"setPeriodToTimeRange\":true}},{\"height\":3,\"width\":18,\"y\":0,\"x\":0,\"type\":\"metric\",\"properties\":{\"metrics\":[[\"AWS/Lambda\",\"Invocations\",\"FunctionName\",\"${genfunc}\"],[\"...\",\"${evalfunc}\"],[\"...\",\"${ctrlfunc}\"],[\"...\",\"${screenshotfunc}\"]],\"view\":\"singleValue\",\"region\":\"${region}\",\"stat\":\"Sum\",\"period\":2592000,\"title\":\"Total Invocations (30 days period)\"}},{\"height\":3,\"width\":12,\"y\":18,\"x\":0,\"type\":\"metric\",\"properties\":{\"metrics\":[[\"AWS/S3\",\"BucketSizeBytes\",\"StorageType\",\"StandardStorage\",\"BucketName\",\"${s3bucket}\"],[\".\",\"NumberOfObjects\",\".\",\"AllStorageTypes\",\".\",\".\"]],\"view\":\"singleValue\",\"region\":\"${region}\",\"stat\":\"Maximum\",\"period\":1,\"title\":\"Evo S3 Storage Stat\",\"stacked\":false,\"setPeriodToTimeRange\":true}},{\"height\":6,\"width\":18,\"y\":3,\"x\":0,\"type\":\"metric\",\"properties\":{\"metrics\":[[\"AWS/Lambda\",\"Invocations\",\"FunctionName\",\"${genfunc}\"],[\"...\",\"${evalfunc}\"],[\"...\",\"${ctrlfunc}\"],[\"...\",\"${screenshotfunc}\"]],\"view\":\"bar\",\"region\":\"${region}\",\"stat\":\"Sum\",\"period\":2592000,\"title\":\"Total Invocations (30 days period) graph\"}},{\"height\":6,\"width\":18,\"y\":12,\"x\":0,\"type\":\"metric\",\"properties\":{\"metrics\":[[\"AWS/Lambda\",\"Duration\",\"FunctionName\",\"${genfunc}\"],[\"...\",\"${evalfunc}\"],[\"...\",\"${ctrlfunc}\"],[\"...\",\"${screenshotfunc}\"]],\"view\":\"bar\",\"region\":\"${region}\",\"stat\":\"Sum\",\"period\":2592000,\"title\":\"Total Duration (30 days period) graph\"}}]}",
+                    { 
+                        "region": {"Ref" : "AWS::Region" },
+                        "genfunc": {"Ref" : "functionevoGenerateName" },
+                        "evalfunc": {"Ref" : "functionevoEvaluateName" },
+                        "ctrlfunc": {"Ref" : "functionevoControllerName" },
+                        "screenshotfunc": {"Ref" : "functionevoScreenshotName" },
+                        "s3bucket": {"Ref" : "storagemobiusevoUserfilesBucketName" }
+                    }
+                ]
+            }
+        }
+      }
+    },
+    "Outputs":{
+      "Name": {
+        "Value": {
+          "Ref": "EvoInfoDashboard"
+        }
+      }
+    }
+  }
+  

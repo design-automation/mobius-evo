@@ -1,6 +1,6 @@
 {
     "identityPoolName": "mobiusevoe7b26413_identitypool_e7b26413",
-    "allowUnauthenticatedIdentities": false,
+    "allowUnauthenticatedIdentities": true,
     "resourceNameTruncated": "mobiuse7b26413",
     "userPoolName": "mobiusevoe7b26413_userpool_e7b26413",
     "autoVerifiedAttributes": [

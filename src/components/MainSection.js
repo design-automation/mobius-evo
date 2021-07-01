@@ -2,11 +2,15 @@ import React, { useContext }from 'react';
 import './MainSection.css';
 import { AuthContext } from '../Contexts';
 import { Route, Switch, Redirect } from 'react-router-dom';
-import Explorations from './main/Explorations';
-import JobForm from './main/JobForm';
 import Landing from './main/Landing';
 import User from './main/User';
-import JobResults from './main/JobResults';
+
+import GuestSearchesList from './main/GuestSearchesList';
+import GuestSearchResult from './main/GuestSearchResult';
+
+import Explorations from './main/UserSearchesList';
+import JobForm from './main/UserCreateNewSearch';
+import JobResults from './main/UserSearchResult';
 import NotFound from './main/NotFound';
 
 function PrivateRoute({ component: Component, ...rest}) {
@@ -28,6 +32,8 @@ function MainSection() {
     <section id="main-section">
       <Switch>
         <Route path="/" exact component={ Landing }/>
+        <Route path="/view-searches" exact component={ GuestSearchesList }/>
+        <Route path="/view-searches/search-results" exact component={ GuestSearchResult }/>
         <PrivateRoute path="/user" component={ User }/>
         <PrivateRoute path="/new-job" component={ JobForm }/>
         <PrivateRoute path="/searches/search-results" component={ JobResults }/>

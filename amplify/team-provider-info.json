@@ -26,7 +26,7 @@
         },
         "evoController": {
           "deploymentBucketName": "amplify-mobiusevo-dev-131353-deployment",
-          "s3Key": "amplify-builds/evoController-6a556f6a462b71746750-build.zip"
+          "s3Key": "amplify-builds/evoController-6e4534526d702f347153-build.zip"
         },
         "evoScreenshot": {
           "deploymentBucketName": "amplify-mobiusevo-dev-131353-deployment",

@@ -11,10 +11,10 @@ export const getJob = /* GraphQL */ `
       expiration
       description
       history
+      run_settings
       max_designs
       population_size
       tournament_size
-      survival_size
       mutation_sd
       createdAt
       endedAt
@@ -41,10 +41,10 @@ export const listJobs = /* GraphQL */ `
         expiration
         description
         history
+        run_settings
         max_designs
         population_size
         tournament_size
-        survival_size
         mutation_sd
         createdAt
         endedAt

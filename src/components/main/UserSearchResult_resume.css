@@ -1,3 +1,6 @@
+.hidden-elm {
+    display: none;
+}
 .text-btn{
     background-color: transparent;
     border: none;
@@ -14,4 +17,9 @@
 }
 .ant-input-number-disabled .ant-input-number-input {
     cursor: default !important;
+}
+.sub-form-item{
+    display: inline-block;
+    width: 200px;
+    margin-bottom: 0px;
 }
