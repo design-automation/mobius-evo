@@ -754,14 +754,38 @@ function ScorePlot({ jobResults }) {
             visible: true,
             text: "Evaluated score over generations",
         },
-        data: plotData,
+        height: 450,
+        data: [plotData, plotData],
         xField: "GenID",
-        yField: "score",
-        seriesField: "genFile",
-        slider: {
-            start: 0,
-            end: 1,
+        yField: ["score", "generation"],
+        geometryOptions: [
+            {
+                geometry: "column",
+                seriesField: "genFile"
+            },
+            {
+                geometry: "line"
+            },
+        ],
+        padding: [20, 20, 60, 30],
+        limitInPlot: false,
+        meta: { 
+            GenID: { sync: false },
+            generation: {min: 0}
         },
+        yAxis: {
+            score: { 
+                title: {
+                    text: "Score",
+                },
+            },
+            generation: {
+                title: {
+                    text: "Generation",
+                }
+            }
+        },
+        slider: {},
         tooltip: {
             customContent: (title, data) => {
                 if (data.length === 0) {
@@ -793,17 +817,18 @@ function ScorePlot({ jobResults }) {
                 </div>`;
             },
         },
-        annotations: regionAnnotations,
     };
     if (minY && maxY) {
-        config.yAxis = {
+        config.yAxis.score = {
+            title: {
+                text: "Score",
+            },
             min: Math.floor(minY),
             max: Math.ceil(maxY),
         };
     }
-    return (
-        <Column
-            {...config}
+
+    return <DualAxes {...config}
             onReady={(plot) => {
                 plot.on("plot:click", (evt) => {
                     const { x, y } = evt;
@@ -826,8 +851,7 @@ function ScorePlot({ jobResults }) {
                     }
                 });
             }}
-        />
-    );
+    />;
 }
 
 function ResultTable({ jobResults, contextForm }) {
