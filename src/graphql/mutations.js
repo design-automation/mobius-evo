@@ -163,3 +163,42 @@ export const deleteGenEvalParam = /* GraphQL */ `
     }
   }
 `;
+export const createEvoSetting = /* GraphQL */ `
+  mutation CreateEvoSetting(
+    $input: CreateEvoSettingInput!
+    $condition: ModelevoSettingConditionInput
+  ) {
+    createEvoSetting(input: $input, condition: $condition) {
+      id
+      value
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const updateEvoSetting = /* GraphQL */ `
+  mutation UpdateEvoSetting(
+    $input: UpdateEvoSettingInput!
+    $condition: ModelevoSettingConditionInput
+  ) {
+    updateEvoSetting(input: $input, condition: $condition) {
+      id
+      value
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const deleteEvoSetting = /* GraphQL */ `
+  mutation DeleteEvoSetting(
+    $input: DeleteEvoSettingInput!
+    $condition: ModelevoSettingConditionInput
+  ) {
+    deleteEvoSetting(input: $input, condition: $condition) {
+      id
+      value
+      createdAt
+      updatedAt
+    }
+  }
+`;

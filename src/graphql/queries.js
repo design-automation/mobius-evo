@@ -150,3 +150,30 @@ export const generationsByJobId = /* GraphQL */ `
     }
   }
 `;
+export const getEvoSetting = /* GraphQL */ `
+  query GetEvoSetting($id: ID!) {
+    getEvoSetting(id: $id) {
+      id
+      value
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const listEvoSettings = /* GraphQL */ `
+  query ListEvoSettings(
+    $filter: ModelevoSettingFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listEvoSettings(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        value
+        createdAt
+        updatedAt
+      }
+      nextToken
+    }
+  }
+`;

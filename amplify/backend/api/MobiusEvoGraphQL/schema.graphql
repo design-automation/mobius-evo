@@ -46,3 +46,8 @@ type GenEvalParam @model @auth(rules: [{ allow: owner }, { allow: public, provid
     expirationTime: Float
     errorMessage: String
 }
+
+type evoSetting @model @auth(rules: [{ allow: public, provider: iam }]) {
+    id: ID!
+    value: String
+}

@@ -145,3 +145,33 @@ export const onDeleteGenEvalParam = /* GraphQL */ `
     }
   }
 `;
+export const onCreateEvoSetting = /* GraphQL */ `
+  subscription OnCreateEvoSetting {
+    onCreateEvoSetting {
+      id
+      value
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const onUpdateEvoSetting = /* GraphQL */ `
+  subscription OnUpdateEvoSetting {
+    onUpdateEvoSetting {
+      id
+      value
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const onDeleteEvoSetting = /* GraphQL */ `
+  subscription OnDeleteEvoSetting {
+    onDeleteEvoSetting {
+      id
+      value
+      createdAt
+      updatedAt
+    }
+  }
+`;

@@ -1,46 +1,67 @@
 import React, { useContext, useEffect, useState } from "react";
 import "./HeaderComponent.css";
 import { Link } from "react-router-dom";
-import { Auth, nav } from "aws-amplify";
+import { Auth, API } from "aws-amplify";
 import { AuthContext } from "../Contexts";
 import { SettingOutlined } from "@ant-design/icons";
-import { Button, Space, Modal, List, Typography, Switch } from "antd";
-import { getSettingsFile, writeSettingsFile} from "../amplify-apis/userFiles";
+import { Button, Space, Modal, List, Typography, Switch, Spin } from "antd";
+import { getSettingsFile} from "../amplify-apis/userFiles";
 import packageJson from "../../package.json";
+import { createEvoSetting, updateEvoSetting } from "../graphql/mutations";
+import { getEvoSetting } from "../graphql/queries";
 
 const INIT_SETTINGS = {
-    hideSignUp: false,
+    hideSignUp: false
 };
 function HeaderComponent() {
     const cognitoPayload = useContext(AuthContext).cognitoPayload;
 
     function SettingsDropdown() {
-        const [settings, setSettings] = useState(null);
-        const [hideSignUp, setHideSignUp] = useState(false);
+        const [initCheck, setInitCheck] = useState(false);
+        const [settings, setSettings] = useState(INIT_SETTINGS);
+        const [hideSignUp, setHideSignUp] = useState(INIT_SETTINGS.hideSignUp);
         const [isModalVisible, setIsModalVisible] = useState(false);
+        const [isLoading, setIsLoading] = useState(true);
 
         useEffect(() => {
             let isMounted = true;
-            if (settings) { return () => {
+            if (initCheck) { return () => {
                 isMounted = false;
             };}
-            let settingFile;
-            getSettingsFile(
-                (response) => (settingFile = response),
-                () => (settingFile = null)
-            ).then(() => {
-                if (!isMounted) return;
-                if (settingFile) {
-                    try {
-                        const parsedSettings = JSON.parse(settingFile);
-                        setSettings(parsedSettings);
-                        setHideSignUp(parsedSettings.hideSignUp)
-                    } catch (ex) {}
-                } else {
-                    setSettings(INIT_SETTINGS);
-                    setHideSignUp(INIT_SETTINGS.hideSignUp)
-                }
-            });
+            API.graphql({
+                query: getEvoSetting,
+                variables: {
+                    id: "mainSettings"
+                },
+                authMode: "AWS_IAM",
+            })
+                .then(async (queryResult) => {
+                    if (!isMounted) return;
+                    setInitCheck(true);
+                    if (queryResult && queryResult.data && queryResult.data.getEvoSetting) {
+                        try {
+                            console.log(queryResult)
+                            const parsedSettings = JSON.parse(queryResult.data.getEvoSetting.value);
+                            console.log(parsedSettings)
+                            setSettings(parsedSettings);
+                            setHideSignUp(parsedSettings.hideSignUp);
+                        } catch(ex) {
+                            console.log(ex)
+                        }
+                    } else {
+                        API.graphql({
+                            query: createEvoSetting,
+                            variables: {
+                                input: {
+                                    id: "mainSettings",
+                                    value: JSON.stringify(INIT_SETTINGS)
+                                }
+                            },
+                            authMode: "AWS_IAM",
+                        }).then(()=>console.log('ok')).catch((error) => console.log(error));
+                    }
+                    setIsLoading(false);
+            }).catch((error) => console.log(error));
             return () => {
                 isMounted = false;
             };
@@ -53,7 +74,17 @@ function HeaderComponent() {
             setIsModalVisible(false);
             settings.hideSignUp = hideSignUp;
             setSettings(settings);
-            writeSettingsFile(JSON.stringify(settings), ()=>console.log('ok'), ()=>console.log('error'))
+            console.log(settings)
+            API.graphql({
+                query: updateEvoSetting,
+                variables: {
+                    input: {
+                        id: "mainSettings",
+                        value: JSON.stringify(settings)
+                    }
+                },
+                authMode: "AWS_IAM",
+            }).then(()=>console.log('ok')).catch((error) => console.log(error));
         }
         function cancelSettingsUpdate() {
             setIsModalVisible(false);
@@ -66,21 +97,20 @@ function HeaderComponent() {
                     break;
             }
         }
-
-        const data = [["Hide Signup", "hideSignUp"]];
-
         return (
             <>
                 <Button id="explorations-btn" onClick={showSettingsModal}>
                     <SettingOutlined />
                 </Button>
                 <Modal title="Basic Modal" visible={isModalVisible} onOk={applySettingsUpdate} onCancel={cancelSettingsUpdate}>
-                    <List.Item>
-                        <Space>
-                            <Typography.Text>Hide Signup</Typography.Text> 
-                            <Switch checked={hideSignUp} onClick={(val) => changeSetting("hideSignUp", val)} />
-                        </Space>
-                    </List.Item>
+                    <Spin spinning={isLoading}>
+                        {isLoading? null: (<List.Item>
+                            <Space>
+                                <Typography.Text>Hide Signup</Typography.Text> 
+                                <Switch checked={hideSignUp} onClick={(val) => changeSetting("hideSignUp", val)} />
+                            </Space>
+                        </List.Item>)}
+                    </Spin>
                 </Modal>
             </>
         );
