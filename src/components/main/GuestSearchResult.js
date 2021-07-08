@@ -99,73 +99,58 @@ function notify(title, text, isWarn = false) {
         description: text,
     });
 }
-
-async function getData(jobID, setJobSettings, setJobResults, setIsLoading, callback, nextToken = null) {
-    await API.graphql({
-        query: generationsByJobId,
-        variables: {
-            limit: 1000,
-            JobID: jobID,
-            items: {},
-            nextToken,
-        },
-        authMode: "AWS_IAM",
-    })
-        .then((queryResult) => {
-            let queriedJobResults = queryResult.data.generationsByJobID.items;
-            if (queryResult.data.generationsByJobID.nextToken) {
-                getData(
-                    jobID,
-                    setJobSettings,
-                    setJobResults,
-                    setIsLoading,
-                    callback,
-                    (nextToken = queryResult.data.generationsByJobID.nextToken)
-                ).catch((err) => {
-                    throw err;
-                });
-            } else {
-                callback();
-            }
-            setJobResults((jobResults) => {
-                queriedJobResults = [...jobResults, ...queriedJobResults];
-                queriedJobResults.sort((a, b) => a.GenID - b.GenID);
-                return queriedJobResults;
-            });
-        })
-        .catch((err) => {
-            console.log(err);
-            throw err;
-        });
-    await API.graphql({
+async function getData(jobID, setJobSettings, setJobResults) {
+    const jobQuery = API.graphql({
         query: getJob,
         variables: {
             id: jobID,
         },
         authMode: "AWS_IAM",
-    })
-        .then((queryResult) => {
-            const jobData = queryResult.data.getJob;
-            if (jobData.run_settings) {
-                const runSettings = JSON.parse(jobData.run_settings);
-                jobData.num_gen = runSettings.num_gen;
-                jobData.max_designs = runSettings.max_designs;
-                jobData.population_size = runSettings.population_size;
-                jobData.tournament_size = runSettings.tournament_size;
-                jobData.mutation_sd = runSettings.mutation_sd;
+    });
+
+    const resultQuery = new Promise(async (resolve) => {
+        const results = []
+        async function callQuery(nextToken = null) {
+            const queryResult = await API.graphql({
+                query: generationsByJobId,
+                variables: {
+                    limit: 1000,
+                    JobID: jobID,
+                    items: {},
+                    nextToken,
+                },
+                authMode: "AWS_IAM",
+            })
+            if (!queryResult || !queryResult.data || !queryResult.data.generationsByJobID) {
+                resolve(results);
             }
-            setJobSettings(jobData);
-            if (!jobData || jobData.jobStatus === "inprogress") {
-                setTimeout(() => {
-                    // setIsLoading(true);
-                    setJobResults([]);
-                    getData(jobID, setJobSettings, setJobResults, setIsLoading, callback);
-                }, 10000);
+            queryResult.data.generationsByJobID.items.forEach(item => results.push(item))
+            if (queryResult.data.generationsByJobID.nextToken) {
+                callQuery(queryResult.data.generationsByJobID.nextToken)
+            } else {
+                resolve(results)
             }
-        })
-        .catch((err) => {
-            throw err;
-        });
+        }
+        await callQuery();
+    }).catch((err) => {
+        console.log(err);
+        throw err;
+    });
+
+    const jobData = (await jobQuery).data.getJob;
+    if (jobData.run_settings) {
+        const runSettings = JSON.parse(jobData.run_settings);
+        jobData.num_gen = runSettings.num_gen;
+        jobData.max_designs = runSettings.max_designs;
+        jobData.population_size = runSettings.population_size;
+        jobData.tournament_size = runSettings.tournament_size;
+        jobData.mutation_sd = runSettings.mutation_sd;
+    }
+    setJobSettings(jobData);
+
+    const jobResults = await resultQuery;
+    jobResults.sort((a, b) => a.GenID - b.GenID);
+    setJobResults(jobResults);
 }
 function viewModel(url, contextURLs = null) {
     const iframe = document.getElementById("mobius_viewer").contentWindow;
@@ -761,20 +746,20 @@ function ScorePlot({ jobResults }) {
         geometryOptions: [
             {
                 geometry: "column",
-                seriesField: "genFile"
+                seriesField: "genFile",
             },
             {
-                geometry: "line"
+                geometry: "line",
             },
         ],
-        padding: [20, 20, 60, 30],
+        padding: [20, 30, 60, 30],
         limitInPlot: false,
-        meta: { 
+        meta: {
             GenID: { sync: false },
-            generation: {min: 0}
+            generation: { min: 0 },
         },
         yAxis: {
-            score: { 
+            score: {
                 title: {
                     text: "Score",
                 },
@@ -782,8 +767,8 @@ function ScorePlot({ jobResults }) {
             generation: {
                 title: {
                     text: "Generation",
-                }
-            }
+                },
+            },
         },
         slider: {},
         tooltip: {
@@ -828,7 +813,9 @@ function ScorePlot({ jobResults }) {
         };
     }
 
-    return <DualAxes {...config}
+    return (
+        <DualAxes
+            {...config}
             onReady={(plot) => {
                 plot.on("plot:click", (evt) => {
                     const { x, y } = evt;
@@ -851,7 +838,8 @@ function ScorePlot({ jobResults }) {
                     }
                 });
             }}
-    />;
+        />
+    );
 }
 
 function ResultTable({ jobResults, contextForm }) {
@@ -1135,7 +1123,6 @@ function ViewTextArea({ jobSettings, contextForm }) {
 }
 
 function JobResults() {
-    const [jobID, setJobID] = useState(null);
     const [modelParams, setModelParams] = useState([]);
     const [jobSettings, setJobSettings] = useState(null);
     const [jobResults, setJobResults] = useState([]);
@@ -1145,9 +1132,10 @@ function JobResults() {
 
     useEffect(() => {
         const jobID = QueryString.parse(window.location.hash).id;
-        setJobID(jobID);
-        getData(jobID, setJobSettings, setJobResults, setIsLoading, () => setIsLoading(false))
-            .then()
+        getData(jobID, setJobSettings, setJobResults)
+            .then(()=>{
+                setIsLoading(false)
+            })
             .catch((err) => console.log(err));
     }, []);
 

@@ -102,70 +102,67 @@ function notify(title, text, isWarn = false) {
     });
 }
 
-async function getData(jobID, userID, setJobSettings, setJobResults, setIsLoading, callback, nextToken = null) {
-    await API.graphql(
-        graphqlOperation(generationsByJobId, {
-            limit: 1000,
-            owner: { eq: userID },
-            JobID: jobID,
-            items: {},
-            nextToken,
-        })
-    )
-        .then((queryResult) => {
-            let queriedJobResults = queryResult.data.generationsByJobID.items;
-            if (queryResult.data.generationsByJobID.nextToken) {
-                getData(
-                    jobID,
-                    userID,
-                    setJobSettings,
-                    setJobResults,
-                    setIsLoading,
-                    callback,
-                    (nextToken = queryResult.data.generationsByJobID.nextToken)
-                ).catch((err) => {
-                    throw err;
-                });
-            } else {
-                callback();
-            }
-            setJobResults((jobResults) => {
-                queriedJobResults = [...jobResults, ...queriedJobResults];
-                queriedJobResults.sort((a, b) => a.GenID - b.GenID);
-                return queriedJobResults;
-            });
-        })
-        .catch((err) => {
-            console.log(err);
-            throw err;
-        });
-    await API.graphql(
+async function getData(jobID, userID, setJobSettings, setJobResults) {
+    let result
+    const jobQuery = API.graphql(
         graphqlOperation(getJob, {
             id: jobID,
         })
-    )
-        .then((queryResult) => {
-            const jobData = queryResult.data.getJob;
-            if (jobData.run_settings) {
-                const runSettings = JSON.parse(jobData.run_settings);
-                jobData.num_gen = runSettings.num_gen;
-                jobData.max_designs = runSettings.max_designs;
-                jobData.population_size = runSettings.population_size;
-                jobData.tournament_size = runSettings.tournament_size;
-                jobData.mutation_sd = runSettings.mutation_sd;
+    );
+
+    const resultQuery = new Promise(async (resolve) => {
+        const results = []
+        async function callQuery(nextToken = null) {
+            const queryResult = await API.graphql(
+                graphqlOperation(generationsByJobId, {
+                    limit: 1000,
+                    owner: { eq: userID },
+                    JobID: jobID,
+                    items: {},
+                    nextToken,
+                })
+            )
+            if (!queryResult || !queryResult.data || !queryResult.data.generationsByJobID) {
+                resolve(results);
             }
-            setJobSettings(jobData);
-            if (!jobData || jobData.jobStatus === "inprogress") {
-                setTimeout(() => {
-                    // setIsLoading(true);
-                    setJobResults([]);
-                    getData(jobID, userID, setJobSettings, setJobResults, setIsLoading, callback);
-                }, 10000);
+            queryResult.data.generationsByJobID.items.forEach(item => {
+                results[Number(item.GenID)] = item
+            })
+            if (queryResult.data.generationsByJobID.nextToken) {
+                callQuery(queryResult.data.generationsByJobID.nextToken)
+            } else {
+                resolve(results)
             }
-        })
-        .catch((err) => {
-            throw err;
-        });
+        }
+        await callQuery();
+    }).catch((err) => {
+        console.log(err);
+        throw err;
+    });
+
+
+    const jobData = (await jobQuery).data.getJob;
+    if (jobData.run_settings) {
+        const runSettings = JSON.parse(jobData.run_settings);
+        jobData.num_gen = runSettings.num_gen;
+        jobData.max_designs = runSettings.max_designs;
+        jobData.population_size = runSettings.population_size;
+        jobData.tournament_size = runSettings.tournament_size;
+        jobData.mutation_sd = runSettings.mutation_sd;
+    }
+    setJobSettings(jobData);
+
+    const jobResults = await resultQuery;
+    // jobResults.sort((a, b) => a.GenID - b.GenID);
+    setJobResults(jobResults);
+
+    if (!jobData || jobData.jobStatus === "inprogress" || jobResults.length < jobData.max_designs) {
+        setTimeout(() => {
+            // setIsLoading(true);
+            setJobResults([]);
+            getData(jobID, userID, setJobSettings, setJobResults);
+        }, 10000);
+    }
 }
 function viewModel(url, contextURLs = null) {
     const iframe = document.getElementById("mobius_viewer").contentWindow;
@@ -761,20 +758,20 @@ function ScorePlot({ jobResults }) {
         geometryOptions: [
             {
                 geometry: "column",
-                seriesField: "genFile"
+                seriesField: "genFile",
             },
             {
-                geometry: "line"
+                geometry: "line",
             },
         ],
-        padding: [20, 20, 60, 30],
+        padding: [20, 30, 60, 30],
         limitInPlot: false,
-        meta: { 
+        meta: {
             GenID: { sync: false },
-            generation: {min: 0}
+            generation: { min: 0 },
         },
         yAxis: {
-            score: { 
+            score: {
                 title: {
                     text: "Score",
                 },
@@ -782,8 +779,8 @@ function ScorePlot({ jobResults }) {
             generation: {
                 title: {
                     text: "Generation",
-                }
-            }
+                },
+            },
         },
         slider: {},
         tooltip: {
@@ -828,7 +825,9 @@ function ScorePlot({ jobResults }) {
         };
     }
 
-    return <DualAxes {...config}
+    return (
+        <DualAxes
+            {...config}
             onReady={(plot) => {
                 plot.on("plot:click", (evt) => {
                     const { x, y } = evt;
@@ -851,7 +850,8 @@ function ScorePlot({ jobResults }) {
                     }
                 });
             }}
-    />;
+        />
+    );
 }
 
 function ResultTable({ jobResults, contextForm }) {
@@ -913,7 +913,7 @@ function ResultTable({ jobResults, contextForm }) {
                     <View
                         onClick={() => {
                             document.getElementById("hiddenInput").value = genModel;
-                            viewModel(genModel, [contextForm.getFieldValue('contextURL')]);
+                            viewModel(genModel, [contextForm.getFieldValue("contextURL")]);
                             updateTextArea(allData.resultText);
                             updateSelectedResult(genModel.split("/public/").pop().replace(".gi", ""));
                         }}
@@ -933,7 +933,7 @@ function ResultTable({ jobResults, contextForm }) {
                     <View
                         onClick={() => {
                             document.getElementById("hiddenInput").value = evalModel;
-                            viewModel(evalModel, [contextForm.getFieldValue('contextURL')]);
+                            viewModel(evalModel, [contextForm.getFieldValue("contextURL")]);
                             updateTextArea(allData.resultText);
                             updateSelectedResult(evalModel.split("/public/").pop().replace("_eval.gi", ""));
                         }}
@@ -1049,26 +1049,25 @@ function ViewTextArea({ jobSettings, contextForm }) {
     }
     function viewGIModel() {
         const val = document.getElementById("hiddenInput").value;
-        viewModel(val, [contextForm.getFieldValue('contextURL')]);
+        viewModel(val, [contextForm.getFieldValue("contextURL")]);
     }
     function updateContextURL() {
-        const val = contextForm.getFieldValue('tempContextURL')
-        contextForm.setFieldsValue({contextURL: val})
+        const val = contextForm.getFieldValue("tempContextURL");
+        contextForm.setFieldsValue({ contextURL: val });
         document.getElementById("hiddenButton").click();
         if (!jobSettings.run) {
-            const otherSettings = jobSettings.other_settings? JSON.parse(jobSettings.other_settings): {};
+            const otherSettings = jobSettings.other_settings ? JSON.parse(jobSettings.other_settings) : {};
             otherSettings.contextURL = val;
             API.graphql(
                 graphqlOperation(updateJob, {
                     input: {
                         id: jobSettings.id,
                         other_settings: JSON.stringify(otherSettings),
-                        run: false
+                        run: false,
                     },
                 })
             ).catch((err) => console.log({ cancelJobError: err }));
         }
-
     }
     async function downloadSelectedModel(isGen = false) {
         if (!selectedJobResult) {
@@ -1132,7 +1131,7 @@ function ViewTextArea({ jobSettings, contextForm }) {
                 <Space direction="vertical">
                     <Form name="basic" form={contextForm}>
                         <Space direction="horizontal">
-                            <Form.Item className='no-margin-form-item' label="Context Url" name="tempContextURL">
+                            <Form.Item className="no-margin-form-item" label="Context Url" name="tempContextURL">
                                 <Input />
                             </Form.Item>
                             <Button onClick={updateContextURL}>apply</Button>
@@ -1161,8 +1160,7 @@ function JobResults() {
     useEffect(() => {
         const jobID = QueryString.parse(window.location.hash).id;
         setJobID(jobID);
-        getData(jobID, cognitoPayload.sub, setJobSettings, setJobResults, setIsLoading, () => setIsLoading(false))
-            .then()
+        getData(jobID, cognitoPayload.sub, setJobSettings, setJobResults).then(() => setIsLoading(false))
             .catch((err) => console.log(err));
     }, [cognitoPayload]);
 
@@ -1171,8 +1169,8 @@ function JobResults() {
             const otherSettings = JSON.parse(jobSettings.other_settings);
             if (otherSettings.contextURL) {
                 contextForm.setFieldsValue({
-                    contextURL : otherSettings.contextURL,
-                    tempContextURL : otherSettings.contextURL
+                    contextURL: otherSettings.contextURL,
+                    tempContextURL: otherSettings.contextURL,
                 });
             }
         }
@@ -1388,10 +1386,7 @@ function JobResults() {
                                                 <ScorePlot jobResults={filteredJobResults ? filteredJobResults : jobResults} />
                                             </Collapse.Panel>
                                             <Collapse.Panel header="Mobius Viewer" key="5" extra={genExtra("result_mobius_viewer")}>
-                                                <ViewTextArea
-                                                    jobSettings={jobSettings}
-                                                    contextForm={contextForm}
-                                                ></ViewTextArea>
+                                                <ViewTextArea jobSettings={jobSettings} contextForm={contextForm}></ViewTextArea>
                                             </Collapse.Panel>
                                             <Collapse.Panel header="Result Table" key="6" extra={genExtra("result_result_table")}>
                                                 <ResultTable
