@@ -40,9 +40,7 @@ function HeaderComponent() {
                     setInitCheck(true);
                     if (queryResult && queryResult.data && queryResult.data.getEvoSetting) {
                         try {
-                            console.log(queryResult)
                             const parsedSettings = JSON.parse(queryResult.data.getEvoSetting.value);
-                            console.log(parsedSettings)
                             setSettings(parsedSettings);
                             setHideSignUp(parsedSettings.hideSignUp);
                         } catch(ex) {
@@ -58,7 +56,7 @@ function HeaderComponent() {
                                 }
                             },
                             authMode: "AWS_IAM",
-                        }).then(()=>console.log('ok')).catch((error) => console.log(error));
+                        }).catch((error) => console.log(error));
                     }
                     setIsLoading(false);
             }).catch((error) => console.log(error));
@@ -74,7 +72,6 @@ function HeaderComponent() {
             setIsModalVisible(false);
             settings.hideSignUp = hideSignUp;
             setSettings(settings);
-            console.log(settings)
             API.graphql({
                 query: updateEvoSetting,
                 variables: {
@@ -84,7 +81,7 @@ function HeaderComponent() {
                     }
                 },
                 authMode: "AWS_IAM",
-            }).then(()=>console.log('ok')).catch((error) => console.log(error));
+            }).catch((error) => console.log(error));
         }
         function cancelSettingsUpdate() {
             setIsModalVisible(false);

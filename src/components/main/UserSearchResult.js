@@ -103,7 +103,6 @@ function notify(title, text, isWarn = false) {
 }
 
 async function getData(jobID, userID, setJobSettings, setJobResults) {
-    let result
     const jobQuery = API.graphql(
         graphqlOperation(getJob, {
             id: jobID,
@@ -113,14 +112,15 @@ async function getData(jobID, userID, setJobSettings, setJobResults) {
     const resultQuery = new Promise(async (resolve) => {
         const results = []
         async function callQuery(nextToken = null) {
+            const resultQueryInput = {
+                limit: 1000,
+                owner: { eq: userID },
+                JobID: jobID,
+                items: {},
+                nextToken,
+            };
             const queryResult = await API.graphql(
-                graphqlOperation(generationsByJobId, {
-                    limit: 1000,
-                    owner: { eq: userID },
-                    JobID: jobID,
-                    items: {},
-                    nextToken,
-                })
+                graphqlOperation(generationsByJobId, resultQueryInput)
             )
             if (!queryResult || !queryResult.data || !queryResult.data.generationsByJobID) {
                 resolve(results);
@@ -1069,6 +1069,19 @@ function ViewTextArea({ jobSettings, contextForm }) {
             ).catch((err) => console.log({ cancelJobError: err }));
         }
     }
+
+    useEffect(() => {
+        if (jobSettings && jobSettings.other_settings) {
+            const otherSettings = JSON.parse(jobSettings.other_settings);
+            if (otherSettings.contextURL) {
+                contextForm.setFieldsValue({
+                    contextURL: otherSettings.contextURL,
+                    tempContextURL: otherSettings.contextURL,
+                });
+            }
+        }
+    }, [jobSettings]);
+
     async function downloadSelectedModel(isGen = false) {
         if (!selectedJobResult) {
             notify("Unable to Download!", "No result was selected, unable to download gi model.", true);
@@ -1164,17 +1177,6 @@ function JobResults() {
             .catch((err) => console.log(err));
     }, [cognitoPayload]);
 
-    useEffect(() => {
-        if (jobSettings && jobSettings.other_settings) {
-            const otherSettings = JSON.parse(jobSettings.other_settings);
-            if (otherSettings.contextURL) {
-                contextForm.setFieldsValue({
-                    contextURL: otherSettings.contextURL,
-                    tempContextURL: otherSettings.contextURL,
-                });
-            }
-        }
-    }, [jobSettings]);
 
     const CancelJob = () => {
         function cancelJob() {
