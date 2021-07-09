@@ -12,6 +12,7 @@ export const onCreateJob = /* GraphQL */ `
       description
       history
       run_settings
+      other_settings
       max_designs
       population_size
       tournament_size
@@ -37,6 +38,7 @@ export const onUpdateJob = /* GraphQL */ `
       description
       history
       run_settings
+      other_settings
       max_designs
       population_size
       tournament_size
@@ -62,6 +64,7 @@ export const onDeleteJob = /* GraphQL */ `
       description
       history
       run_settings
+      other_settings
       max_designs
       population_size
       tournament_size
@@ -93,8 +96,8 @@ export const onCreateGenEvalParam = /* GraphQL */ `
       owner
       expirationTime
       errorMessage
-      createdAt
       updatedAt
+      createdAt
     }
   }
 `;
@@ -115,8 +118,8 @@ export const onUpdateGenEvalParam = /* GraphQL */ `
       owner
       expirationTime
       errorMessage
-      createdAt
       updatedAt
+      createdAt
     }
   }
 `;
@@ -137,6 +140,36 @@ export const onDeleteGenEvalParam = /* GraphQL */ `
       owner
       expirationTime
       errorMessage
+      updatedAt
+      createdAt
+    }
+  }
+`;
+export const onCreateEvoSetting = /* GraphQL */ `
+  subscription OnCreateEvoSetting {
+    onCreateEvoSetting {
+      id
+      value
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const onUpdateEvoSetting = /* GraphQL */ `
+  subscription OnUpdateEvoSetting {
+    onUpdateEvoSetting {
+      id
+      value
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const onDeleteEvoSetting = /* GraphQL */ `
+  subscription OnDeleteEvoSetting {
+    onDeleteEvoSetting {
+      id
+      value
       createdAt
       updatedAt
     }

@@ -22,6 +22,9 @@
     background-color: #ffa39e; /* color of the scroll thumb */
     border: 2px solid #ffccc7; /* creates padding around scroll thumb */
 }
+.no-margin-form-item{
+    margin: 0px;
+}
 p {
     margin: 7px 0px 7px 0px;
 }

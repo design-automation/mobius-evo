@@ -15,6 +15,7 @@ export const createJob = /* GraphQL */ `
       description
       history
       run_settings
+      other_settings
       max_designs
       population_size
       tournament_size
@@ -43,6 +44,7 @@ export const updateJob = /* GraphQL */ `
       description
       history
       run_settings
+      other_settings
       max_designs
       population_size
       tournament_size
@@ -71,6 +73,7 @@ export const deleteJob = /* GraphQL */ `
       description
       history
       run_settings
+      other_settings
       max_designs
       population_size
       tournament_size
@@ -105,8 +108,8 @@ export const createGenEvalParam = /* GraphQL */ `
       owner
       expirationTime
       errorMessage
-      createdAt
       updatedAt
+      createdAt
     }
   }
 `;
@@ -130,8 +133,8 @@ export const updateGenEvalParam = /* GraphQL */ `
       owner
       expirationTime
       errorMessage
-      createdAt
       updatedAt
+      createdAt
     }
   }
 `;
@@ -155,6 +158,45 @@ export const deleteGenEvalParam = /* GraphQL */ `
       owner
       expirationTime
       errorMessage
+      updatedAt
+      createdAt
+    }
+  }
+`;
+export const createEvoSetting = /* GraphQL */ `
+  mutation CreateEvoSetting(
+    $input: CreateEvoSettingInput!
+    $condition: ModelevoSettingConditionInput
+  ) {
+    createEvoSetting(input: $input, condition: $condition) {
+      id
+      value
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const updateEvoSetting = /* GraphQL */ `
+  mutation UpdateEvoSetting(
+    $input: UpdateEvoSettingInput!
+    $condition: ModelevoSettingConditionInput
+  ) {
+    updateEvoSetting(input: $input, condition: $condition) {
+      id
+      value
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const deleteEvoSetting = /* GraphQL */ `
+  mutation DeleteEvoSetting(
+    $input: DeleteEvoSettingInput!
+    $condition: ModelevoSettingConditionInput
+  ) {
+    deleteEvoSetting(input: $input, condition: $condition) {
+      id
+      value
       createdAt
       updatedAt
     }

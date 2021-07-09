@@ -1,13 +1,13 @@
 import React, { useContext, useEffect, useState } from "react";
 import "./Landing.css";
-import { Auth } from "aws-amplify";
+import { Auth, API } from "aws-amplify";
 import { onAuthUIStateChange } from "@aws-amplify/ui-components";
 import { AuthContext } from "../../Contexts";
 import { AmplifyAuthenticator, AmplifySignIn, AmplifySignUp } from "@aws-amplify/ui-react";
 import { Space, Collapse, Row, Col, Typography, Button, Descriptions, Checkbox, Affix } from "antd";
 import { Link } from 'react-router-dom';
 import { UploadOutlined } from "@ant-design/icons";
-import { getSettingsFile } from "../../amplify-apis/userFiles";
+import { getEvoSetting } from "../../graphql/queries";
 import awsExports from '../../aws-exports'
 
 function Landing() {
@@ -31,18 +31,28 @@ function Landing() {
             let isMounted = true;
             onAuthUIStateChange(authUser)
             let settingFile;
-            getSettingsFile(response => settingFile = response, () => settingFile = null).then(()=>{
-                if (!isMounted) return;
-                if (settingFile) {
-                    try {
-                        const settings = JSON.parse(settingFile);
-                        console.log(settings)
-                        setHideSignUp(settings.hideSignUp);
-                    } catch(ex) {}
-                } else {
-                    setHideSignUp(false);
-                }
+            API.graphql({
+                query: getEvoSetting,
+                variables: {
+                    id: "mainSettings"
+                },
+                authMode: "AWS_IAM",
             })
+                .then(async (queryResult) => {
+                    if (!isMounted) return;
+                    console.log(queryResult)
+                    if (queryResult && queryResult.data.getEvoSetting && queryResult.data.getEvoSetting.value) {
+                        const settings = JSON.parse(queryResult.data.getEvoSetting.value);
+                        if (settings.hideSignUp) {
+                            setHideSignUp(true);
+                        } else {
+                            setHideSignUp(false);
+                        }
+                    } else {
+                        setHideSignUp(false);
+                    }
+            }).catch((error) => console.log(error));
+
             return () => { isMounted = false };
         });
 

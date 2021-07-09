@@ -12,6 +12,7 @@ export const getJob = /* GraphQL */ `
       description
       history
       run_settings
+      other_settings
       max_designs
       population_size
       tournament_size
@@ -42,6 +43,7 @@ export const listJobs = /* GraphQL */ `
         description
         history
         run_settings
+        other_settings
         max_designs
         population_size
         tournament_size
@@ -75,8 +77,8 @@ export const getGenEvalParam = /* GraphQL */ `
       owner
       expirationTime
       errorMessage
-      createdAt
       updatedAt
+      createdAt
     }
   }
 `;
@@ -102,8 +104,8 @@ export const listGenEvalParams = /* GraphQL */ `
         owner
         expirationTime
         errorMessage
-        createdAt
         updatedAt
+        createdAt
       }
       nextToken
     }
@@ -141,6 +143,33 @@ export const generationsByJobId = /* GraphQL */ `
         owner
         expirationTime
         errorMessage
+        updatedAt
+        createdAt
+      }
+      nextToken
+    }
+  }
+`;
+export const getEvoSetting = /* GraphQL */ `
+  query GetEvoSetting($id: ID!) {
+    getEvoSetting(id: $id) {
+      id
+      value
+      createdAt
+      updatedAt
+    }
+  }
+`;
+export const listEvoSettings = /* GraphQL */ `
+  query ListEvoSettings(
+    $filter: ModelevoSettingFilterInput
+    $limit: Int
+    $nextToken: String
+  ) {
+    listEvoSettings(filter: $filter, limit: $limit, nextToken: $nextToken) {
+      items {
+        id
+        value
         createdAt
         updatedAt
       }

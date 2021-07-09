@@ -810,8 +810,6 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
             return;
         }
         const newJobSettings = form.getFieldsValue();
-        console.log('....', newJobSettings)
-        console.log('~~~~', importGenFile)
 
         newJobSettings.description = jobSettings.description;
         newJobSettings.genUrl = {};
@@ -860,7 +858,9 @@ function ResumeForm({ jobID, jobSettingsState, jobResultsState, getData, setIsLo
         )
             .then(() => {
                 setJobResults([]);
-                getData(jobSettings.id, jobSettings.owner, setJobSettings, setJobResults, setIsLoading, () => setIsLoading(false)).catch((err) =>
+                getData(jobSettings.id, jobSettings.owner, setJobSettings, setJobResults)
+                .then(() => setIsLoading(false))
+                .catch((err) =>
                     console.log(err)
                 );
             })

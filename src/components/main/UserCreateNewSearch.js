@@ -762,7 +762,7 @@ function SettingsForm({ currentStateManage }) {
                 tournament_size: jobSettings.tournament_size,
                 mutation_sd: jobSettings.mutation_sd,
             }),
-
+            other_settings: '{}',
             max_designs: null,
             population_size: null,
             tournament_size: null,
