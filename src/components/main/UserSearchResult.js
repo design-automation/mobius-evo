@@ -129,11 +129,9 @@ async function getData(jobID, userID, setJobSettings, setJobResults, lastUpdated
                     }
                 }
             }
-            console.log('~~~~', resultQueryInput)
             const queryResult = await API.graphql(
                 graphqlOperation(generationsByJobId, resultQueryInput)
             )
-            console.log('====', queryResult)
             if (!queryResult || !queryResult.data || !queryResult.data.generationsByJobID) {
                 resolve(results);
             }
@@ -146,7 +144,6 @@ async function getData(jobID, userID, setJobSettings, setJobResults, lastUpdated
             if (queryResult.data.generationsByJobID.nextToken) {
                 callQuery(queryResult.data.generationsByJobID.nextToken)
             } else {
-                console.log('++++', results)
                 resolve(results)
             }
         }
