@@ -77,8 +77,8 @@ export const getGenEvalParam = /* GraphQL */ `
       owner
       expirationTime
       errorMessage
-      createdAt
       updatedAt
+      createdAt
     }
   }
 `;
@@ -104,8 +104,8 @@ export const listGenEvalParams = /* GraphQL */ `
         owner
         expirationTime
         errorMessage
-        createdAt
         updatedAt
+        createdAt
       }
       nextToken
     }
@@ -143,8 +143,8 @@ export const generationsByJobId = /* GraphQL */ `
         owner
         expirationTime
         errorMessage
-        createdAt
         updatedAt
+        createdAt
       }
       nextToken
     }

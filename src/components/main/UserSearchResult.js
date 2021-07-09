@@ -102,7 +102,10 @@ function notify(title, text, isWarn = false) {
     });
 }
 
-async function getData(jobID, userID, setJobSettings, setJobResults) {
+async function getData(jobID, userID, setJobSettings, setJobResults, lastUpdatedData = null) {
+    const latestUpdateTime = new Date().toISOString();
+    let scoreCheck = true;
+
     const jobQuery = API.graphql(
         graphqlOperation(getJob, {
             id: jobID,
@@ -110,7 +113,7 @@ async function getData(jobID, userID, setJobSettings, setJobResults) {
     );
 
     const resultQuery = new Promise(async (resolve) => {
-        const results = []
+        const results = lastUpdatedData? lastUpdatedData.data: [];
         async function callQuery(nextToken = null) {
             const resultQueryInput = {
                 limit: 1000,
@@ -119,18 +122,31 @@ async function getData(jobID, userID, setJobSettings, setJobResults) {
                 items: {},
                 nextToken,
             };
+            if (lastUpdatedData) {
+                resultQueryInput.filter = {
+                    updatedAt: {
+                        ge: lastUpdatedData.time
+                    }
+                }
+            }
+            console.log('~~~~', resultQueryInput)
             const queryResult = await API.graphql(
                 graphqlOperation(generationsByJobId, resultQueryInput)
             )
+            console.log('====', queryResult)
             if (!queryResult || !queryResult.data || !queryResult.data.generationsByJobID) {
                 resolve(results);
             }
             queryResult.data.generationsByJobID.items.forEach(item => {
                 results[Number(item.GenID)] = item
+                if (!item.score && !item.errorMessage) {
+                    scoreCheck = false;
+                }
             })
             if (queryResult.data.generationsByJobID.nextToken) {
                 callQuery(queryResult.data.generationsByJobID.nextToken)
             } else {
+                console.log('++++', results)
                 resolve(results)
             }
         }
@@ -152,15 +168,19 @@ async function getData(jobID, userID, setJobSettings, setJobResults) {
     }
     setJobSettings(jobData);
 
-    const jobResults = await resultQuery;
+    const newJobResults = await resultQuery;
     // jobResults.sort((a, b) => a.GenID - b.GenID);
-    setJobResults(jobResults);
+    setJobResults(newJobResults);
 
-    if (!jobData || jobData.jobStatus === "inprogress" || jobResults.length < jobData.max_designs) {
+    if (!jobData || jobData.jobStatus === "inprogress" || newJobResults.length < jobData.max_designs || !scoreCheck) {
         setTimeout(() => {
             // setIsLoading(true);
             setJobResults([]);
-            getData(jobID, userID, setJobSettings, setJobResults);
+            const latestUpdated = {
+                time: latestUpdateTime,
+                data: newJobResults
+            }
+            getData(jobID, userID, setJobSettings, setJobResults, latestUpdated);
         }, 10000);
     }
 }
@@ -1173,7 +1193,7 @@ function JobResults() {
     useEffect(() => {
         const jobID = QueryString.parse(window.location.hash).id;
         setJobID(jobID);
-        getData(jobID, cognitoPayload.sub, setJobSettings, setJobResults).then(() => setIsLoading(false))
+        getData(jobID, cognitoPayload.sub, setJobSettings,setJobResults).then(() => setIsLoading(false))
             .catch((err) => console.log(err));
     }, [cognitoPayload]);
 

@@ -96,8 +96,8 @@ export const onCreateGenEvalParam = /* GraphQL */ `
       owner
       expirationTime
       errorMessage
-      createdAt
       updatedAt
+      createdAt
     }
   }
 `;
@@ -118,8 +118,8 @@ export const onUpdateGenEvalParam = /* GraphQL */ `
       owner
       expirationTime
       errorMessage
-      createdAt
       updatedAt
+      createdAt
     }
   }
 `;
@@ -140,8 +140,8 @@ export const onDeleteGenEvalParam = /* GraphQL */ `
       owner
       expirationTime
       errorMessage
-      createdAt
       updatedAt
+      createdAt
     }
   }
 `;
